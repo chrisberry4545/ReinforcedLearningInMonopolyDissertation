@@ -1,0 +1,34 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import javax.swing.*;
+import java.awt.Color;
+
+/**
+ *
+ * @author chris
+ */
+public class PropertyLabel extends JLabel{
+    
+    private Color background;
+    private Color textColor;
+    
+    public PropertyLabel(String text, Color backgroundColor, Color fontColor,
+            boolean isMortgaged, int numHouses) {
+        this.setText(text);
+        this.setOpaque(true);
+        this.background = backgroundColor;
+        this.textColor = fontColor;
+        this.setBackground(backgroundColor);
+        this.setForeground(fontColor);
+        if (isMortgaged) {
+            this.setText(text + "(Mortgaged)");
+        }
+        if (numHouses > 0) {
+            this.setText(this.getText() + " (" + numHouses + "houses)");
+        }
+    }
+}

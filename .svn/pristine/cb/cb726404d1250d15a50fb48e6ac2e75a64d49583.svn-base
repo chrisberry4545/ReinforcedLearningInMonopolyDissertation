@@ -1,0 +1,41 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class GeneralRepairs extends CardAction {
+    
+    private int costPerHouse;
+    private int costPerHotel;
+    
+    public GeneralRepairs(int perHouseCost, int perHotelCost) {
+        costPerHouse = perHouseCost;
+        costPerHotel = perHotelCost;
+    }
+    
+    /**
+     * Charges the player an amount based upon the number of houses and hotels
+     * they own.
+     * @param player 
+     */
+    @Override
+    public void performAction(Player player) {
+        int amountToPay = 0;
+        for (Site site : player.getSites()){
+            if (site.getHouses() == site.getMaxHouses()) {
+                amountToPay =+ costPerHotel;
+            } else {
+                amountToPay =+ site.getHouses() * costPerHouse;
+            }
+        }
+        player.changeMoney(-amountToPay);
+    }
+    
+}

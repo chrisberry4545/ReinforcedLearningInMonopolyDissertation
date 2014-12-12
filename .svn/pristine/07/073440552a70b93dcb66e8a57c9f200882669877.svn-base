@@ -1,0 +1,181 @@
+package Display;
+
+import javax.swing.*;
+import Model.*;
+import java.awt.GridLayout;
+import java.awt.Color;
+import java.awt.ComponentOrientation;
+import java.awt.Dimension;
+import java.awt.Point;
+import java.util.Map;
+import java.util.HashMap;
+import java.awt.Component;
+import java.awt.Container;
+import java.util.Collection;
+/**
+ *
+ * @author chris
+ */
+public class BoardDisplay extends JFrame {
+    
+    private JPanel mainPanel = new JPanel();
+    private JLayeredPane[][] gridPanels;
+    private JPanel statPanel = new JPanel();
+   
+    private JPanel boardLayer = new JPanel();
+    private int boardWidth = 11;
+    private int southFinalSpace = 11;
+    private int eastFinalSpace = 21;
+    private int northFinalSpace = 31;
+    
+    private int windowWidth = 600;
+    private int windowHeight = 600;
+    
+    private Dimension boardDimensions =
+            new Dimension(windowWidth, 8*windowHeight/10);
+    private Dimension dimensions =
+            new Dimension (windowWidth, windowHeight);
+    
+    private int tileWidth = 40;
+    private int tileHeight = 80;
+    
+    private Map<Integer, JLabel> playerIcons;
+    private Map<Integer, JPanel> playerStats;
+    
+    public BoardDisplay() {
+        setUpBoardLayouts();
+        playerIcons = new HashMap();
+        playerStats = new HashMap();
+        this.getContentPane().add(mainPanel);
+        this.setPreferredSize(dimensions);
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.pack();
+        this.setVisible(true);
+    }
+    
+    /**
+     * Sets up the layouts of the various panels used in the display.
+     */
+    private void setUpBoardLayouts() {
+        boardLayer.setLayout(new GridLayout(boardWidth,boardWidth));
+        
+        gridPanels = new JLayeredPane[boardWidth][boardWidth];    
+        for(int m = 0; m < boardWidth; m++) {
+           for(int n = 0; n < boardWidth; n++) {
+              gridPanels[m][n] = new JLayeredPane();
+              boardLayer.add(gridPanels[m][n]);
+           }
+        }
+        
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        boardLayer.setMaximumSize(boardDimensions);
+        mainPanel.add(boardLayer);
+        statPanel.setLayout(new BoxLayout(statPanel, BoxLayout.X_AXIS));
+        mainPanel.add(statPanel);        
+    }
+    
+    
+    
+    /**
+     * Adds a representation of the space to the display. 
+     * @param spaceToAdd
+     * @param labelName 
+     */
+    public void addSpaceToDisplay(int spaceToAdd, String labelName) {
+        JLabel label = new JLabel(labelName);
+        Point coord = spaceNumToBoardCoord(spaceToAdd);
+        label.setBounds(0,0,tileWidth, tileHeight);
+        addToGrid(label, coord, JLayeredPane.DEFAULT_LAYER);
+    }
+    
+    /**
+     * Adds a player's counter to the display.
+     */
+    public void addPlayerMarker(int playerToken, int spaceToAdd) {
+        JLabel player = new JLabel(playerToken + "");
+        Point coord = spaceNumToBoardCoord(spaceToAdd);
+        player.setForeground(Color.RED);
+        player.setBounds(0,0,tileWidth,tileHeight);
+        switch (playerToken) {
+            case 0 : player.setBorder(BorderFactory.createLineBorder(Color.RED));
+                break;
+            case 1: player.setBorder(BorderFactory.createLineBorder(Color.BLUE));
+                break;
+            case 2: player.setBorder(BorderFactory.createLineBorder(Color.WHITE));
+                break;
+            case 3: player.setBorder(BorderFactory.createLineBorder(Color.GREEN));
+                break;
+            default : player.setBorder(BorderFactory.createLineBorder(Color.ORANGE));
+        }
+        playerIcons.put(playerToken, player);
+        addToGrid(player, coord, JLayeredPane.PALETTE_LAYER);
+    }
+    
+    public void updateStatPanel(int playerToken, int money) {
+        JPanel playerPanel;
+        if (playerStats.containsKey(playerToken)) {
+            playerPanel = playerStats.get(playerToken);
+            playerPanel.removeAll();
+        } else {
+            statPanel.add(Box.createHorizontalGlue());
+            playerPanel = new JPanel();
+            playerStats.put(playerToken, playerPanel);
+            playerPanel.setLayout(new BoxLayout(playerPanel, BoxLayout.X_AXIS));
+            statPanel.add(playerPanel);
+            statPanel.add(Box.createHorizontalGlue()); 
+        }
+        JLabel playerMoney = new JLabel("Player " + playerToken + ": " + money);
+        playerPanel.add(playerMoney); 
+        playerPanel.repaint();
+        this.revalidate();
+    }
+    
+    /**
+     * Moves the player to the new space on the GUI display.
+     * @param playerToken
+     * @param newSpace 
+     */
+    public void movePlayer(int playerToken, int newSpace) {
+        JLabel player = playerIcons.get(playerToken);
+        Container c = player.getParent();
+        c.remove(player);
+        c.repaint();
+        Point spaceNum = spaceNumToBoardCoord(newSpace);
+        addToGrid(player, spaceNum, JLayeredPane.PALETTE_LAYER);
+    }
+    
+    /**
+     * Adds a component to a given point on the grid.
+     * @param c
+     * @param coord A
+     */
+    private void addToGrid(Component c, Point coord, int layer) {
+        gridPanels[coord.x][coord.y].add(c, layer);
+    }
+    
+    /**
+     * Converts a spaceNumber from the model to 
+     * the appropriate coord of the display grid.
+     * @param spaceNumber
+     * @return Point showing grid location.
+     */
+    private Point spaceNumToBoardCoord(int spaceNumber) {
+        Point coord = new Point(0,0);
+        if (spaceNumber < southFinalSpace) {
+            coord.setLocation(boardWidth - 1, boardWidth - spaceNumber - 1);
+        } else {
+            if (spaceNumber < eastFinalSpace) {
+                coord.setLocation(eastFinalSpace - spaceNumber - 1, 0);
+            } else {
+                if (spaceNumber < northFinalSpace) {
+                    coord.setLocation(0 , spaceNumber - eastFinalSpace + 1);
+                } else {
+                    coord.setLocation(spaceNumber - northFinalSpace + 1 ,
+                            boardWidth - 1);
+                }
+            }
+        }
+        return coord;
+    }
+    
+}

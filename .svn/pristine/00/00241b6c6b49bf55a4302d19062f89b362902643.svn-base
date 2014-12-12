@@ -1,0 +1,11 @@
+package Model;
+
+/**
+ *
+ * @author chris
+ */
+public class ChanceCard extends Card{
+    
+    
+    
+}

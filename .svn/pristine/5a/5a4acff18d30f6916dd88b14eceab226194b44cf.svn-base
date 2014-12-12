@@ -1,0 +1,65 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Game;
+import Model.Players.AbstractTDPlayer;
+import Model.Players.*;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Evaluator;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.NeuralNetwork.Critic;
+
+/**
+ *
+ * @author chris
+ */
+public class Main {
+    
+    private static final String FILE_TO_LOAD = "June-01-2013-lambda0-1500runs";
+    private static final String FILE_NAME_TO_SAVE_TO = FILE_TO_LOAD;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        double lambda = 0.0;
+        int totalNumberOfRuns = 1500;
+        int runsBeforeSave = 100;
+        int amountOfSaves = totalNumberOfRuns/runsBeforeSave;
+        int numInputNodes  = SimpleTDPlayer.NUM_INPUT_NODES;
+        int numOutputNodes = SimpleTDPlayer.NUM_INPUT_NODES;
+        int numHiddenNodes = SimpleTDPlayer.NUM_HIDDEN_NODES;
+        int moneyOffset = numOutputNodes/2;
+        
+        /**
+         * Enable to start new network.
+         */
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, numInputNodes, 
+                numOutputNodes, numHiddenNodes);
+        evaluator.restartNetwork();
+        
+        /**
+         * Enable to load network.
+         */
+       // AbstractEvaluator evaluator = new AbstractEvaluator(FILE_TO_LOAD);
+       // evaluator.loadNet(FILE_TO_LOAD);
+        
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer, numOutputNodes, moneyOffset);
+        ActionManager am = ActionManager.getInstance();
+        for (int runs = 0; runs < amountOfSaves; runs++ ) {
+            for (int i = 0; i < runsBeforeSave; i++) {
+                System.out.println("On run :" + i);   
+                //startNewGame vars: critic, showGraphics, numHumanPlayers, numRandomAIs, numTDAIs.
+                am.startNewGame(critic, false, 0, 2, 0);
+            }
+            //save after every hundred games.
+            System.out.println("Saving the file (Save number: " + runs + ").");
+            evaluator.saveNet(FILE_NAME_TO_SAVE_TO);
+        }
+    }
+}

@@ -1,0 +1,133 @@
+package Model.Spaces;
+
+import Model.Players.Player;
+import Controller.ActionManager;
+import java.util.*;
+import java.awt.Color;
+
+/**
+ * A site a player can buy. An example of this would be Mayfair.
+ * @author chris
+ */
+public class Site extends Space {
+    
+    public static final int HOUSE_ADDED = 0;
+    public static final int TOO_MANY_HOUSES = 1;
+    public static final int MUST_BUY_HOUSES_ON_OTHER_PROPERTIES = 2;
+    
+    private int noOfHouses;
+    private int[] rentRates;
+    private int houseCost;
+    private Color color;
+    
+    private final int maxHouses = 5;
+    
+    
+    public Site(String name, int intialCost, int mortgageRate,
+            int[] rentPerNumberOfHouses, int houseCost, Color color) {
+        super(name, intialCost, mortgageRate);
+        if (rentPerNumberOfHouses.length <= maxHouses) {
+            System.err.println(name + " has too few house values");
+        }
+        this.noOfHouses = 0;
+        this.rentRates = rentPerNumberOfHouses;
+        this.houseCost = houseCost;
+        this.color = color;
+        SiteGroup.addSite(this);
+    }
+    
+    /**
+     * Allows the player to buy a property if it not already owned. If it is
+     * owned they will be charged the rent rate of the property.
+     * @param diceRoll the amount the player rolled to land here.
+     * @return rent of property.
+     */
+    @Override
+    public int performAction(int diceRoll, Player player) {  
+        super.landedOnProperty(player, getRent());
+        return 0;
+    }
+    
+    /**
+     * Gets the current rent for this site.
+     * @return current rent.
+     */
+    public int getRent() {
+        return rentRates[noOfHouses];
+    }
+    
+    /**
+     * Adds one house to this site. Returns false if unsuccessful.
+     * @return true if successful, false if unsuccessful.
+     */
+    public int addHouse() {    
+        if (owner.optionalMoneyChange(-houseCost)) {
+            this.noOfHouses++;
+            return HOUSE_ADDED;
+        } else {
+            //Player can't afford the house.
+            return Player.NOT_ENOUGH_MONEY;
+            }
+    }
+    
+    /**
+     * Gets the number of houses. 5 Houses means the site has a hotel
+     * built upon it.
+     * @return The number of houses.
+     */
+    public int getHouses() {
+        return noOfHouses;
+    }
+    /**
+     * Return the color of the property.
+     * @return the color of the property.
+     */
+    public Color getColor() {
+        return color;
+    }
+    
+    /**
+     * Gets the maximum amount of houses which can be built on the property.
+     * @return the maximum number of houses which can be built on the property.
+     */
+    public int getMaxHouses() {
+        return maxHouses;
+    }
+    
+    /**
+     * Gets the cost of adding a new house.
+     * @return Gets the cost of adding a new house.
+     */
+    public int getHouseCost() {
+        return houseCost;
+    }
+    
+    /**
+     * Returns true if the owner can afford to buy a house on this site.
+     * @return 
+     */
+    public boolean canOwnerAffordHouse() {
+        if (owner.getMoney() - houseCost >= 0) {
+            return true;
+        }
+        return false;
+    }
+    
+    public boolean lessThanTheMaximumHouses() {
+        if (noOfHouses < maxHouses) {
+            return true;
+        }
+        return false;
+    }
+    
+    public boolean canBuildOnThisSite() {
+        if (SiteGroup.playerOwnsAMonopoly(this)
+                && SiteGroup.otherPropertiesHaveEnoughHouses(this)
+                && canOwnerAffordHouse()
+                && lessThanTheMaximumHouses()) {
+            return true;
+        }
+        return false;
+    }
+    
+}

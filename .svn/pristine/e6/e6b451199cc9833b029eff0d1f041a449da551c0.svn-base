@@ -1,0 +1,23 @@
+package Model;
+
+/**
+ * The Bank in Monopoly.
+ * @author chris
+ */
+public class Bank {
+    
+    private int housesLeft;
+    private int hotelsLeft;
+    private final int totalHouses = 35;
+    private final int totalHotels = 13;
+    
+    public Bank() {
+        this.housesLeft = totalHouses;
+        this.hotelsLeft = totalHotels;
+    }
+    
+    public void actionProperty() {
+        
+    }
+    
+}

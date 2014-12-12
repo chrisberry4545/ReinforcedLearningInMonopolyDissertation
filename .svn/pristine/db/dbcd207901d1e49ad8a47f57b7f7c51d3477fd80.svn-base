@@ -1,0 +1,113 @@
+package Model;
+
+import java.util.*;
+
+/**
+ * Represents a Player in monopoly.
+ * @author chris
+ */
+public class Player {
+    
+    private Property currentSpace;
+    private List<Property> properties;
+    private int money;
+    private int getOutOfJailCards;
+    private Collection<SiteGroup> propertyGroups;
+    private int turnsInJailCounter;
+    private int token;
+    
+    public Player(int setToken) {
+        this.token = setToken;
+        properties = new ArrayList();
+    }
+    
+    /**
+     * Rolls two dice and returns their outcome. If a double is rolled the
+     * dice can be rolled again. If 3 doubles are rolled a value of -1 is
+     * returned and the player should be sent to jail.
+     * @return value of player's dice rolls or -1 if they rolled 3 doubles.
+     */
+    public int rollForTurn() {
+        int dice1;
+        int dice2;
+        int total = 0;
+        for (int i = 0; i < 3; i++) {
+            dice1 = rollDice();
+            dice2 = rollDice();
+            total += dice1 + dice2;
+            //If dice aren't the same (E.g no double is rolled).
+            if (dice1 != dice2) {
+                return total;
+            }
+        }
+        //If no total is returned then the player has rolled 3 doubles
+        //and should be sent to jail. This is notified with a return of -1.
+        return -1;
+    } 
+    
+    /**
+     * Rolls a single 6 sided dice and returns the result.
+     * @return the result of rolling a 6 sided dice.
+     */
+    private int rollDice() {
+        return 1 + (int)(Math.random() * ((6 - 1) + 1));
+    }
+    
+    public void setSpace(Property newSpace) {
+        this.currentSpace = newSpace;
+    }
+    
+    
+    public void changeMoney(int amount) {
+        this.money += amount;
+    }
+    
+    public int getMoney () {
+        return money;
+    }
+    
+    public int getNumberOfUtilOwned() {
+        return getNumberOfCardTypeOwned(Utility.class);
+    }
+    
+    public int getNumberOfStationsOwned() {
+        return getNumberOfCardTypeOwned(Station.class);
+    }
+    
+    public int getNumberOfCardTypeOwned(Class cardType) {
+        int cardTypes = 0;
+        for (Property property : properties) {
+            if (property.getClass().equals(cardType)) {
+                cardTypes++;
+            }
+        }
+        return cardTypes;
+    }
+    
+    public int getToken() {
+        return token;
+    }
+    
+    public Property getCurrentSpace() {
+        return currentSpace;
+    }
+    
+    public List<Property> getProperties() {
+        return properties;
+    }
+    
+    public List<Site> getSites() {
+        List<Site> sites = new ArrayList();
+        for (Property property : properties) {
+            if (property.getClass().equals(Site.class)) {
+                sites.add((Site)property);
+            }
+        }
+        return sites;
+    }
+    
+    public void addProperty(Property p) {
+        properties.add(p);
+    }
+    
+}

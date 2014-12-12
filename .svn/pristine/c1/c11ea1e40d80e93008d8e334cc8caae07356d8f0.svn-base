@@ -1,0 +1,78 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Board;
+import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Spaces.*;
+import Model.Board;
+import java.awt.Color;
+
+/**
+ *
+ * @author chris
+ */
+public class OnePlayersResourcePanel extends JPanel {
+    
+    private JLabel playerName;
+    private JLabel playerMoney;
+    private JLabel playerGetOutOfJailCards;
+    private List<JLabel> playerProperties;
+    
+    private JPanel standardPanel;
+    private JPanel propertyPanel;
+    
+    public OnePlayersResourcePanel() {
+        playerName = new JLabel("Player: ");
+        playerMoney = new JLabel("Money: ");
+        playerGetOutOfJailCards = new JLabel("Get out of jail cards: ");
+        standardPanel = new JPanel();
+        standardPanel.setLayout(new BoxLayout(standardPanel, BoxLayout.Y_AXIS));
+        propertyPanel = new JPanel();
+        propertyPanel.setLayout(new BoxLayout(propertyPanel, BoxLayout.Y_AXIS));
+        
+        standardPanel.add(playerName);
+        standardPanel.add(playerMoney);
+        standardPanel.add(playerGetOutOfJailCards);
+        this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+        
+        this.add(Box.createHorizontalGlue());
+        this.add(standardPanel);
+        this.add(Box.createHorizontalGlue());
+        this.add(propertyPanel);
+        this.add(Box.createHorizontalGlue());
+        
+    }
+    
+    public void changePlayer(int playerNumber, int money, int gOOJCards,
+            List<Space> properties) {
+        playerName.setText("Player: " + playerNumber);
+        playerMoney.setText("Money: " + money);
+        playerGetOutOfJailCards.setText("Get out of jail cards: " + gOOJCards);
+        propertyPanel.removeAll();
+        propertyPanel.add(new JLabel("Owned Properties"));
+        if (properties != null) {
+            for (Space property: properties) {
+                int colorNumber = -1;
+                if (property.getClass() == Site.class) {
+                    Site site = (Site)property;
+                    colorNumber = site.getColorNumber();
+                }
+                propertyPanel.add(new PropertyLabel(property.getName(),
+                        Board.getColor(colorNumber),
+                        Board.getMatchingTextColor(colorNumber),
+                        property.isMortgaged()));
+            }
+        }
+        
+        propertyPanel.revalidate();
+        standardPanel.revalidate();
+        
+    }
+    
+    
+}

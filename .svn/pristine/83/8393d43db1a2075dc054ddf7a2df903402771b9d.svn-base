@@ -1,0 +1,188 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import javax.swing.*;
+import Model.Players.Player;
+import java.util.List;
+import Model.Spaces.Space;
+import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import Model.DealOffer;
+import java.awt.Dimension;
+import Model.Players.HumanPlayer;
+import java.util.Map;
+import java.util.HashMap;
+
+/**
+ *
+ * @author chris
+ */
+public class DealMakerDisplay extends JFrame{
+    
+    private final int displayWidth = 300;
+    private final int displayHeight = 500;
+    
+    private Map<Player, JSpinner> playersMoneyMap = new HashMap();
+    private Map<Player,Map<JCheckBox, Space> > playersCheckBoxes = new HashMap();
+    private DealOffer dealOffer = null;
+    private Player playerToOfferTo = null;
+    private Player currentPlayer;
+    
+    public DealMakerDisplay(Player dealMaker, List<Player> otherPlayers) {
+        currentPlayer = dealMaker;
+        this.getContentPane().setLayout(new BoxLayout(this.getContentPane(),
+                BoxLayout.Y_AXIS));
+        JPanel playersPanels = new JPanel();
+        playersPanels.setLayout(new BoxLayout(playersPanels, BoxLayout.X_AXIS));
+        playersPanels.add(setUpCurrentPlayerPanel(dealMaker));
+        playersPanels.add(setUpOtherPlayersPanel(otherPlayers));
+        this.getContentPane().add(playersPanels);
+        this.getContentPane().add(setUpAcceptButton(dealMaker));
+        
+        
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        this.pack();
+        this.setLocationRelativeTo(null);
+        this.setVisible(true);
+    }
+    
+    public JPanel setUpCurrentPlayerPanel(Player player) {
+        JPanel currentPlayerPanel = new JPanel();
+        currentPlayerPanel.setLayout(new BoxLayout(currentPlayerPanel,
+                BoxLayout.Y_AXIS));
+        JLabel playerNameLabel = new JLabel("Your assets (P" + player.getNumber() + ")");
+        playerNameLabel.setBorder(BorderFactory.createRaisedSoftBevelBorder());
+        currentPlayerPanel.add(playerNameLabel);
+        currentPlayerPanel.add(setUpDealMakerPanel(player));
+        return currentPlayerPanel;
+    }
+    
+    public JPanel setUpDealMakerPanel(Player player) {
+        JPanel dealMakerPanel = new JPanel();
+        dealMakerPanel.setLayout(new BoxLayout(dealMakerPanel, BoxLayout.Y_AXIS));
+        
+        dealMakerPanel.add(Box.createVerticalGlue());
+        SpinnerNumberModel sModel = 
+                new SpinnerNumberModel(0, 0, player.getMoney(), 1);
+        JSpinner spinner = new JSpinner(sModel);
+        dealMakerPanel.add(spinner);
+        dealMakerPanel.add(Box.createVerticalGlue());
+        dealMakerPanel.add(setUpPropertyCheckBoxes(player));
+        dealMakerPanel.add(Box.createVerticalGlue());
+        playersMoneyMap.put(player, spinner);
+        
+        return dealMakerPanel;
+    }
+    
+    public JPanel setUpPropertyCheckBoxes(Player player) {
+        JPanel propertyCheckBoxesPanel = new JPanel();
+        propertyCheckBoxesPanel.setLayout(new BoxLayout(propertyCheckBoxesPanel,
+                BoxLayout.Y_AXIS));
+        
+        for (Space space : player.getProperties()) {
+            JCheckBox checkBox = new JCheckBox(space.getName());
+            if (playersCheckBoxes.containsKey(player)) {
+                playersCheckBoxes.get(player).put(checkBox, space);
+            } else {
+                Map<JCheckBox, Space> checkBoxSpaceMap = new HashMap();
+                checkBoxSpaceMap.put(checkBox, space);
+                playersCheckBoxes.put(player, checkBoxSpaceMap);
+            }
+            propertyCheckBoxesPanel.add(checkBox);
+        }
+        
+        return propertyCheckBoxesPanel;
+    }
+    
+    public JPanel setUpOtherPlayersPanel(List<Player> otherPlayers) {
+        JPanel otherPlayersPanel = new JPanel();
+        otherPlayersPanel.setLayout(new BoxLayout(otherPlayersPanel, BoxLayout.Y_AXIS));
+        
+        otherPlayersPanel.add(playerComboBox(otherPlayers));
+        otherPlayersPanel.add(setUpOtherPlayerAssets(otherPlayers.get(0)));
+        
+        return otherPlayersPanel;
+    }
+    
+    public JPanel setUpOtherPlayerAssets(Player player) {
+        playerToOfferTo = player;
+        return setUpDealMakerPanel(player);
+    }
+    
+    public JComboBox playerComboBox(List<Player> players) {
+        String[] playerNumbers = new String[players.size()];
+        for (int i = 0; i < players.size(); i++) {
+            playerNumbers[i] = "Player: " + players.get(i).getNumber();
+        }
+        final JComboBox playersComboBox = new JComboBox(playerNumbers);
+        playersComboBox.setSelectedIndex(0);
+        playersComboBox.setAction(new AbstractAction("Player changed") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+//                    ActionManager.getInstance().colorChange(viewType, 
+//                            playersComboBox.getSelectedIndex());
+            }
+        });;
+        return playersComboBox;
+    }
+    
+    public JButton setUpAcceptButton(final Player player) {
+        JButton offerDeal = new JButton("Make Offer");
+        offerDeal.setAction(new AbstractAction("Make Offer") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            }
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                HumanPlayer humanPlayer = (HumanPlayer)player;
+                if (humanPlayer.askPlayerYesOrNoQuestion("Are you sure you want to make "
+                        + "this deal?", "Deal Confirmation")) {
+                    establishDealOffer();
+                }
+            }
+        });
+        return offerDeal;
+    }
+    
+    public void establishDealOffer() {
+        DealOffer offer = new DealOffer();
+        
+        int moneyToOffer = (int)this.playersMoneyMap.get(currentPlayer).getValue();
+        offer.offerCash(moneyToOffer);
+        
+        Map<JCheckBox, Space> thisPlayerMap = playersCheckBoxes.get(currentPlayer);
+        
+        for (JCheckBox checkBox : thisPlayerMap.keySet()) {
+            if (checkBox.isSelected()) {
+                offer.addPropertyToOffer(thisPlayerMap.get(checkBox));
+            }
+        }
+        
+        int moneyToRequest = (int)this.playersMoneyMap.get(playerToOfferTo).getValue();
+        offer.requestCash(moneyToRequest);
+        
+        Map<JCheckBox, Space> otherPlayerMap = playersCheckBoxes.get(playerToOfferTo);
+        for (JCheckBox checkBox : otherPlayerMap.keySet()) {
+            if (checkBox.isSelected()) {
+                offer.addPropertyToRequest(otherPlayerMap.get(checkBox));
+            }
+        }
+        
+        this.dealOffer = offer;
+        
+    }
+    
+    public DealOffer getDealOffer() {
+        return dealOffer;
+    }
+    
+    public Player getPlayerToOfferTo() {
+        return playerToOfferTo;
+    }
+}

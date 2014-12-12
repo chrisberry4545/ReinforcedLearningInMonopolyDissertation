@@ -1,0 +1,120 @@
+package PlayerTests.TDPlayerTests;
+
+import Model.Players.AbstractTDPlayer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.junit.After;
+import org.junit.AfterClass;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+/**
+ * Ensures a TD AI selects the best options from a group of results.
+ * @author Chris Berry
+ */
+public class ChooseBestOptionTest extends TDTestEnvirorment{
+    
+    public ChooseBestOptionTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    @Test
+    public void testChooseBestOption() {
+        super.setUpTDTestEnvirorment();
+        
+        //Only the first result of the list should matter.
+        double[] resultsDoubleZero = {1,2,3,4,5,6,7,8,9,10,11,12};
+        double[] resultsDoubleOne = {12,11,10,9,8,6,6,5,4,3,2,1};
+        double[] resultsDoubleTwo = {6,6,6,6,6,6,6,6,6,6,6,6};
+        double[] resultsDoubleThree = {3,13,13,13,13,6,13,5,13,13,13,13};
+        List<double[]> resultsDoubleList = new ArrayList();
+        resultsDoubleList.add(resultsDoubleZero);
+        resultsDoubleList.add(resultsDoubleOne);
+        resultsDoubleList.add(resultsDoubleTwo);
+        resultsDoubleList.add(resultsDoubleThree);
+       
+        Map.Entry<Integer,Double> bestResult = 
+                tdPlayerOne.pickFromResults
+                (resultsDoubleList, tdPlayerOne.getNumber());
+        
+        pickedBestResults(bestResult, 1, 12);
+        
+        double bestMonetaryResult = tdPlayerOne.getMoneyToOfferForResult(
+                resultsDoubleList.get(bestResult.getKey()), 
+                tdPlayerOne.getNumber());
+        
+        pickedBestResults(bestMonetaryResult, 6);
+        
+        //If player had a different token.
+        
+        Map.Entry<Integer,Double> bestResultP1 =
+                tdPlayerOne.pickFromResults(resultsDoubleList, 1);
+        
+        pickedBestResults(bestResultP1, 3, 13);
+        
+        double bestMonetaryResultP1 = tdPlayerOne.getMoneyToOfferForResult(
+                resultsDoubleList.get(bestResultP1.getKey()), 1);
+        
+        pickedBestResults(bestMonetaryResultP1, 5);
+        
+        Map.Entry<Integer,Double> bestResultP6 =
+                tdPlayerOne.pickFromResults(resultsDoubleList, 5);
+        
+        pickedBestResults(bestResultP6, 0, 6);
+        
+        double bestMonetaryResultP6 = tdPlayerOne.getMoneyToOfferForResult(
+                resultsDoubleList.get(bestResultP6.getKey()), 5);
+        
+        pickedBestResults(bestMonetaryResultP6, 12);
+    }
+    
+    private void pickedBestResults(Map.Entry<Integer,Double> bestResult,
+            int bestResultNum, double bestValue) {
+        if (bestResult.getKey() == bestResultNum) {
+            System.out.println("Test Succesful: The TD AI has picked the correct"
+                    + " best result, result number " + bestResultNum);
+        } else {
+            fail("The TD AI has chosen the result number " + bestResult.getKey()
+                     + " instead of the actual best result which should have"
+                    + " been " + bestResultNum);
+        }
+        pickedBestValue(bestResult.getValue(), bestValue);
+    }
+    
+    private void pickedBestResults(double bestResult,double bestValue) {
+        pickedBestValue(bestResult, bestValue);
+    }
+    
+    private void pickedBestValue(double bestResultValue, double bestValue) {
+        if (bestResultValue == bestValue 
+                || bestResultValue
+                /AbstractTDPlayer.MONEY_MULTIPLYER_FOR_VALUE_OUTPUT == bestValue) {
+            System.out.println("Test Succesful: The TD AI has picked the correct"
+                    + " best value, which is " + bestValue);
+        } else {
+            fail("The TD AI has chosen the value " + bestResultValue
+                     + " instead of the actual best value which should have"
+                    + " been " + bestValue);
+        }
+    }
+}

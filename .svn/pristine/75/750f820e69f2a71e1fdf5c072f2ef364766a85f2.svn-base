@@ -1,0 +1,29 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model;
+
+/**
+ *
+ * @author chris
+ */
+public class CardSpace extends Space {
+    
+    private boolean isCommChest;
+    
+    public CardSpace(String name, boolean isCommunityChest) {
+        super(name, -1, -1);
+        this.isCommChest = isCommunityChest;
+    }
+    
+    @Override
+    public int getRent(int diceRoll) {
+        return -1;
+    }
+    
+    public boolean isCommChest() {
+        return isCommChest;
+    }
+     
+}

@@ -1,0 +1,788 @@
+package Model.Players;
+
+import Model.Cards.Card;
+import Model.DealOffer;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.TDInputGenerators.TDInputGenerator;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The TDMoveEvaluator is used by TDPlayers to evaluate the value of certain moves.
+ * @author Chris Berry
+ */
+public class TDMoveEvaluator {
+    
+    private Critic critic;
+    private TDInputGenerator inputGen;
+    private Player owningPlayer;
+    
+    /**
+     * Cash increments reflects the value of cash the AI will use when deciding
+     * how much to pay for something. It will assess the payoffs of paying
+     * from 0 to its maximum amount of money and every step inbetween which
+     * is of the appropriate increment.
+     */
+    protected static final int CASH_INCREMENTS = 50;
+    
+    /**
+     * Creates a new TDMoveEvaluator.
+     * @param critic the critic used by the move evaluator.
+     * @param inputGen the input generator used by the move evaluator.
+     * @param owningPlayer the player who the move evaluator belongs to.
+     */
+    public TDMoveEvaluator(Critic critic,
+            TDInputGenerator inputGen, Player owningPlayer) {
+        this.critic = critic;
+        this.inputGen = inputGen;
+        this.owningPlayer = owningPlayer;
+    }
+    
+    /**
+     * Gets the output from the neural network of feeding in the current inputs.
+     * @param playerNumber the player number to get results for.
+     * @return output from the neural network.
+     */
+    public double getCurrentResults(int playerNumber) {
+        //Always 0 at the moment with only a single output.
+        return getCurrentResultsArray(playerNumber)[0];
+    }
+    
+    /**
+     * Gets an array of the current results for a given player number.
+     * @param playerNumber to get results for.
+     * @return array of results.
+     */
+    public double[] getCurrentResultsArray(int playerNumber) {
+        double[] inputs = inputGen.getCurrentInputs(playerNumber);
+        return critic.getGeneralizer().getEvaluator().evaluate(inputs);
+    }
+    
+    /**
+     * Gets the specific result for this player.
+     * @return 
+     */
+    public double getThisPlayersResults() {
+        return getCurrentResults(owningPlayer.getNumber());
+    }
+    
+/**
+ * Methods for getting the best results from a list of results.
+ */
+    /**
+     * Gets the best result for the player from a list of results.
+     * @param results to pick from.
+     * @return Map.Entry<Integer,Double> of the best result.
+     */
+    public Map.Entry<Integer, Double> pickFromResults(List<Double> results) {
+        return getBestEntry(results);
+    }
+    
+     /**
+     * Gets the highest scoring entry from a list of results at a given offset
+     * and multiplied by the moneyMultiplyer if this is necessary.
+     * @param results to choose from.
+     * @param playerNumPlusOffset player token number plus the offset for money
+     * if this is to be used.
+     * @param moneyMultiplyer amount output should be multiplied by, this can
+     * be 1 if no multiplication should occur.
+     * @return Map.Entry<Integer,Double> representing the best result.
+     */
+    private Map.Entry<Integer,Double> getBestEntry(List<Double> results) {
+        //Needs at least 1 result to choose from.
+        if (results.size() > 0) {
+            //Go through all of the results and finds the number and the output
+            //of the result with the highest value.
+            double winningResults = results.get(0);
+            int currentWinningResult = 0;
+            for (int i = 1; i < results.size(); i++) {
+                if (results.get(i) > winningResults) {
+                    winningResults = results.get(i);
+                    currentWinningResult = i;
+                }
+            }
+            //The result output and number are put into a Map.Entry and returned.
+            Map<Integer, Double>  resultMap = new HashMap();
+            resultMap.put(currentWinningResult,
+                    winningResults);
+            for (Map.Entry resultEntry : resultMap.entrySet()) {
+                return resultEntry;
+            }
+        } else {
+            System.err.println("Need at least one result to choose from");
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the worst result possible from a list of results where the result
+     * is still better than the 'entryToBeat'. Used to minimise returns for
+     * other players when making a deal.
+     * @param results to find worse result from.
+     * @param entryToBeat result that the worst result must be better than.
+     * @return Map.Entry<Integer, Double> of the number the worse result was
+     * at and the value of the worst result.
+     */
+    private Map.Entry<Integer,Double> getWorstEntryWhereEntryIsGreaterThanValue(
+            List<Double> results, double entryToBeat)
+    {
+        if (results.size() > 0) {
+            //Go through all the result and find that with the lowest value at
+            //the offset which is also higher than the entryToBeat value.
+            double lowestResult = results.get(0);
+            int currentLowestResult = 0;
+            for (int i = 1; i < results.size(); i++) {
+                //If the result is less than the lowest result and higher
+                //than the entryToBeat value this becomes the lowest value.
+                double resultToConsider = results.get(i);
+                if (resultToConsider < lowestResult
+                        && resultToConsider > entryToBeat) {
+                    lowestResult = resultToConsider;
+                    currentLowestResult = i;
+                }
+            }
+            //If entry to beat is still lower than the current result then
+            //there is no offers the other player will accept and null is
+            //returned.
+            if (entryToBeat > lowestResult) {
+                return null;
+            }
+            //Put the result output and number into a Map.Entry and return it.
+            Map<Integer, Double>  resultMap = new HashMap();
+            resultMap.put(currentLowestResult, lowestResult);
+            for (Map.Entry resultEntry : resultMap.entrySet()) {
+                return resultEntry;
+            }
+            
+        } else {
+            System.err.println("Need at least one result to choose from");
+        }
+        return null;
+    }
+
+    
+/**
+ * Methods Involving getting the results of certain actions.
+ */    
+    
+    /**
+     * Gets the results of a player buying a property.
+     * @param property to try buying.
+     * @param costOfBuying cost of buying the property.
+     * @param playerBuying player buying the property.
+     * @param playerForResults player to get the results for.
+     * @return results of buying the property or the bad output array if the
+     * property cannot be bought.
+     */
+    public double getResultsOfBuyingProperty(Space property, 
+            int costOfBuying, Player playerBuying, Player playerForResults) {
+        //Changes the players money by the appropriate amount.
+        if (playerBuying.optionalMoneyChange(-costOfBuying)) {
+            //Sets the player as the owner.
+            Player currentOwner = property.getOwner();
+            property.setOwner(playerBuying);
+            double resultsWithBuying = getCurrentResults(playerForResults.getNumber());
+            //Set all inputs back.
+            playerBuying.optionalMoneyChange(costOfBuying);
+            property.setOwner(currentOwner);
+            //Return the results of buying the property.
+            return resultsWithBuying;
+        }
+        //Returns a bad output array if the property cannot be bought.
+        return TDInputGenerator.BAD_OUTPUT_NUM;
+    }
+    
+    /**
+     * Gets the results of buying a house on the property.
+     * @param property to try buying a house on.
+     * @param playerBuying who is buying the house.
+     * @param playerForResults player to get the results for.
+     * @return results of buying a house on the property or a bad output array
+     * if you cannot buy a house here.
+     */
+    public double getResultsOfBuyingHouse(Site property, Player playerBuying,
+            Player playerForResults) {
+        int houseCost = property.getHouseCost();
+        //Get the results of adding a house on the property.
+        if (property.addHouse() == Site.HOUSE_ADDED) {
+            double resultsWithBuying = getCurrentResults(playerForResults.getNumber());
+            //Set all inputs back.
+            playerBuying.optionalMoneyChange(houseCost);
+            property.returnHousesForFree(1);
+            //Reutnr the results of buying the house.
+            return resultsWithBuying;
+        }
+        //Return a bad output array if you can't add a house on the property.
+        return TDInputGenerator.BAD_OUTPUT_NUM;
+    }
+    
+    /**
+     * Gets the results of selling a house on a property.
+     * @param property to try selling a house on.
+     * @param playerForResults the player to get the results for.
+     * @return results of selling the house.
+     */
+    public double getResultsOfSellingHouse(Site property, 
+            Player playerForResults) {
+        int houseSellPrice = property.getHouseSellPrice();
+        //Try selling a house on the property and get the results.
+        if (property.getHouses() > 0) {
+            property.returnHousesForFree(1);
+            property.getOwner().optionalMoneyChange(houseSellPrice);
+            double resultsWithSelling 
+                    = getCurrentResults(playerForResults.getNumber());
+            //Set all inputs back.
+            //The players money needs to be changed by the amount they gained
+            //from selling the house.
+            property.getOwner().optionalMoneyChange(-houseSellPrice);
+            //Adds the house back for free.
+            property.addHouseForFree();
+            return resultsWithSelling;
+        }
+        //If the house cannot be sold on the property return a bad output array.
+        return TDInputGenerator.BAD_OUTPUT_NUM;
+    }
+    
+    /**
+     * Gets the results of mortgaging a property.
+     * @param property to mortgage.
+     * @param playerForResults the player to get results for.
+     * @return results of mortgaging the property.
+     */
+    public double getResultsOfMortgagingProperty(Space property, 
+            Player playerForResults) {
+        //Mortgage the property and view the results.
+        int mortgageRate = property.getMortgageRate();
+        property.getOwner().optionalMoneyChange(mortgageRate);
+        property.mortgageWithoutPayment();
+        double results = getCurrentResults(playerForResults.getNumber());
+        //Sets inputs back.
+        property.UnMortgageForFree();
+        property.getOwner().optionalMoneyChange(-mortgageRate);
+        //Return the results obtained when the property was mortgaged.
+        return results;
+    }
+    
+    /**
+     * Gets the results of unmortgaging a property.
+     * @param property to get results for unmortgaging.
+     * @param playerForResults the player to get results for.
+     * @return results of unmortgaging the property or a bad output array
+     * if the property cannot be unmortgaged.
+     */
+    public double getResultsOfUnMortgagingProperty(Space property, 
+            Player playerForResults) {
+        int mortgageRepayment = property.getMortgageRepaymentRate();
+        //Attempt to unmortgage the property and get the results.
+        if (property.getOwner().optionalMoneyChange(-mortgageRepayment)) {
+            property.UnMortgageForFree();
+            double results = getCurrentResults(playerForResults.getNumber());
+            //Set inputs back.
+            property.mortgageWithoutPayment();
+            property.getOwner().optionalMoneyChange(mortgageRepayment);
+            return results;
+        }
+        //If the property cannot be unmortaged return a bad output array.
+        return TDInputGenerator.BAD_OUTPUT_NUM;
+    }
+    
+    /**
+     * Obtains the results of getting a property from another player.
+     * @param property to obtain from other player.
+     * @param playerForResults the player to get results for.
+     * @return the results of becoming the owner of this property.
+     */
+    public double getResultOfGettingPropertyFromPlayer(Space property,
+            Player playerForResults) {
+        Player currentOwner = property.getOwner();
+        property.setOwner(owningPlayer);
+        double result = getCurrentResults(playerForResults.getNumber());
+        property.setOwner(currentOwner);
+        return result;
+    }
+    
+/**
+ * Methods for assessing the best outcomes for various moves.
+ */
+    
+     /**
+     * Gets a Map entry of the site most worth buying, and the predicted value
+     * of buying that site for a given player.
+     * @param player who you want the best house for buying for.
+     * @return Map.Entry<Double,Site> of the pay off for building a house
+     * on the best property, and the best property to build on.
+     */
+    public Map.Entry<Double, Site> 
+            getPropertyMostWorthBuyingHouseOn(Player player) {
+        List<Double> resultsForBuyingHouse = new ArrayList();
+        //Go through all sites which can be built on and add the results of
+        //buying a house on any of the to the list.
+        List<Site> sitesWhichCanBeBuiltOn = player.getSitesWhichCanBeBuiltOn();
+        if (sitesWhichCanBeBuiltOn.isEmpty()) {
+            return null;
+        }
+        for (Site site : sitesWhichCanBeBuiltOn) {
+            resultsForBuyingHouse.add(this.getResultsOfBuyingHouse(site, player, player));
+        }
+        return getBestResult(resultsForBuyingHouse, sitesWhichCanBeBuiltOn);
+    }
+    
+     /**
+     * Gets a Map.Entry of the property most worth selling a house on and the
+     * value of doing so.
+     * @return Double,Site Map.Entry of property most worth selling a house on
+     * and value of doing so.
+     */
+    public Map.Entry<Double, Site> getPropertyMostWorthSellingHouseOn() {
+        List<Double> resultsForSellingHouse = new ArrayList();
+        //Go through all sites which houses can be sold on and get the results 
+        //of selling houses on these propertys.
+        List<Site> sitesWhereHousesCanBeSold 
+                = owningPlayer.getSitesWithHousesWhichCanBeSold();
+        if (sitesWhereHousesCanBeSold.isEmpty()) {
+            return null;
+        }
+        for (Site site : sitesWhereHousesCanBeSold) {
+            resultsForSellingHouse.add
+                    (this.getResultsOfSellingHouse(site, owningPlayer));
+        }
+        return getBestResult(resultsForSellingHouse, sitesWhereHousesCanBeSold);
+    }
+    
+    /**
+     * Gets the property most worth mortgaging for the player or null if none
+     * are worth mortgaging.
+     * @return A Map.Entry<Double,Space> of the property most worth mortgaging
+     * and the value of doing so.
+     */
+    public Map.Entry<Double, Space> getPropertyMostWorthMortgaging() {
+        return
+                getPropertyMostWorthMortgagingFromSelection
+                (owningPlayer.getMortgagableProperties());
+    }
+    
+    /**
+     * The AI finds the property most worth mortgaging from a given list of 
+     * properties.
+     * @param properties to find the one most worth mortgaging from.
+     * @return Map.Entry<Double, Space> of the value of mortgaging the property
+     * most worth mortgaging and the property most worth mortgaging itself.
+     */
+    public Map.Entry<Double, Space> getPropertyMostWorthMortgagingFromSelection
+            (List<Space> properties) {
+        List<Double> resultsForMortgaging = new ArrayList();
+        //Gets a list of the sites which can be mortgaged and adds the results
+        //of doing so to the list.
+        List<Space> sitesWhichCanMortgage = properties;
+        if (sitesWhichCanMortgage.isEmpty()) {
+            return null;
+        }
+        for (Space space : sitesWhichCanMortgage) {
+            resultsForMortgaging.add
+                    (this.getResultsOfMortgagingProperty(space, owningPlayer));
+        }
+        return getBestResult(resultsForMortgaging, sitesWhichCanMortgage);
+    }
+    
+    /**
+     * Gets the property for which the player will gain the most value from 
+     * unmortgaging.
+     * @return property most worth un mortgaging.
+     */
+    public Map.Entry<Double, Space> getPropertyMostWorthUnMortgaging() {
+        List<Double> resultsOfUnmortgaging = new ArrayList();
+        //Go through all mortgaged properties and add the results of mortgaging
+        //them to the List.
+        List<Space> sitesWhichCanBeUnMortgage = owningPlayer.getMortgagedProperties();
+        if (sitesWhichCanBeUnMortgage.isEmpty()) {
+            return null;
+        }
+        for (Space space : sitesWhichCanBeUnMortgage) {
+            //Only add properties which player can afford to unmortgage.
+            if (owningPlayer.getMoney() > space.getRebuyRate()) {
+                resultsOfUnmortgaging.add(
+                        this.getResultsOfUnMortgagingProperty(space, owningPlayer));
+            }
+        }
+        if (resultsOfUnmortgaging.isEmpty()) {
+            return null;
+        }
+        return getBestResult(resultsOfUnmortgaging, sitesWhichCanBeUnMortgage);
+    }
+       
+    /**
+     * Gets the best offer a player can make with each player trading up
+     * to one site and all their money on a deal.
+     * Note: for the time being offers won't include get out of jail cards.
+     * Note: only allows for trading of one property by each player at the moment.
+     * @return Map.Entry<Double, Map.Entry <Player, DealOffer > > which in order
+     * represent: the value of the deal happening, the player the deal should
+     * be made with, and the deal itself.
+     * Returns null if the best option is to do nothing
+     */
+    public Map.Entry<Double, Map.Entry<Player, DealOffer> >
+            getOfferMostWorthMaking() {
+        List<Double> allResults = new ArrayList();
+        List<Space> allProperties = new ArrayList();
+        //Gets a list of all the other players properties.
+        for (Player otherPlayer: Game.getInstance().getPlayers()) {
+            if (!otherPlayer.equals(owningPlayer)) {
+                allProperties.addAll(otherPlayer.getProperties());
+            }
+        }
+        //Go through all these properties and get the value of buying them.
+        for (Space property : allProperties) {
+            allResults.add(
+                    getResultOfGettingPropertyFromPlayer(property, owningPlayer));
+        }
+        if (allProperties.isEmpty()) {
+            return null;
+        }
+        Map.Entry<Double,Space> spaceToRequest 
+                = getBestResult(allResults, allProperties);
+
+        if (spaceToRequest != null) {
+            DealOffer offerToMakeWithProperty = new DealOffer();
+            offerToMakeWithProperty.addPropertyToRequest(spaceToRequest.getValue());
+            Player otherPlayer = spaceToRequest.getValue().getOwner();
+            Map.Entry<Double,Map.Entry<Player,DealOffer> > lowestOffer =
+                getLowestDealOfferOtherPlayerWillAccept(offerToMakeWithProperty,
+                    otherPlayer);   
+            //If lowest offer then there is no deals the other player will accept.
+            if (lowestOffer != null) {
+                return lowestOffer;
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+    
+    /**
+     * Based on the space chosen by the player works out the best combination
+     * of a single property and money which another player is likely to accept.
+     * The method finds the combination of property and money that they player
+     * will accept for the player to accept with the current space.
+     * @param offerPlayerWantsToMake offer which the player wants to make 
+     * (doesn't have to include offered properties).
+     * @param playerToMakeOfferTo the player to make the deal offer to.
+     * @return Best offer the player can make choosing the offer that the other
+     * player is likely to accept, yet giving him the lowest payoff.
+     */
+    public Map.Entry<Double, Map.Entry<Player, DealOffer> >
+            getLowestDealOfferOtherPlayerWillAccept
+            (DealOffer offerPlayerWantsToMake, Player playerToMakeOfferTo) {
+        List<Double> dealResults = new ArrayList();
+        List<DealOffer> choiceOfOffers = new ArrayList();
+        //Try the deal with just cash, no properties.
+        for (int cash = 0; cash + CASH_INCREMENTS < owningPlayer.getMoney();
+                cash += CASH_INCREMENTS) {
+            DealOffer offer = new DealOffer(offerPlayerWantsToMake);
+            offer.offerCash(cash);
+            dealResults.add(this.getValueOfOfferForOtherPlayer(offer, playerToMakeOfferTo, owningPlayer));
+            choiceOfOffers.add(offer);
+        }
+        //Check the value of the other playing owning one of this player's
+        //properties and a certain amount of the player's money.
+        for (int i = 0; i < owningPlayer.getProperties().size(); i++) {
+            //Try the deal with multiples of 50 added.
+            Space property = owningPlayer.getProperties().get(i);
+            for (int cash = 0; cash + CASH_INCREMENTS < owningPlayer.getMoney(); 
+                    cash += CASH_INCREMENTS) {
+                DealOffer offer = new DealOffer(offerPlayerWantsToMake);
+                offer.addPropertyToOffer(property);
+                offer.offerCash(cash);
+                dealResults.add(
+                        this.getValueOfOfferForOtherPlayer(offer, playerToMakeOfferTo, owningPlayer));
+                choiceOfOffers.add(offer);
+            }
+            //Try the deal offer requesting multiples of 50.
+            for (int cash = 0; cash + CASH_INCREMENTS < playerToMakeOfferTo.getMoney(); 
+                    cash += CASH_INCREMENTS) {
+                DealOffer offer = new DealOffer(offerPlayerWantsToMake);
+                offer.addPropertyToOffer(property);
+                offer.requestCash(cash);
+                dealResults.add(
+                        this.getValueOfOfferForOtherPlayer(offer, playerToMakeOfferTo, owningPlayer));
+                choiceOfOffers.add(offer);
+            }
+        }
+        if (dealResults.isEmpty()) {
+            return null;
+        }
+        double currentResultsForOtherPlayer 
+                = getCurrentResults(playerToMakeOfferTo.getNumber());
+        Map.Entry<Integer,Double> bestWayToGetProperty =
+                getWorstEntryWhereEntryIsGreaterThanValue(dealResults,
+                currentResultsForOtherPlayer);
+        //bestWayToGetProperty is null if no way is avaliable to get the property.
+        if (bestWayToGetProperty == null) {
+            return null;
+        }
+        DealOffer bestOffer = choiceOfOffers.get(bestWayToGetProperty.getKey());
+        Double valueOfOffer = bestWayToGetProperty.getValue();
+        Map<Player, DealOffer> playerDealMap = new HashMap();
+        playerDealMap.put(playerToMakeOfferTo, bestOffer);
+        Map.Entry<Player, DealOffer> playerDealEntry 
+                = generateMapEntry(playerDealMap);
+        Map<Double, Map.Entry<Player,DealOffer> > completeMap = new HashMap();
+        completeMap.put(valueOfOffer, playerDealEntry);
+        return generateMapEntry(completeMap);
+    }
+    
+    /**
+     * Gets the value of an Deal Offer for this player.
+     * @param offer to assess the value of.
+     * @param playerReceivingOffer player receiving the offer.
+     * @param playerOffering player making the offer to other player.
+     * @return the value of the offer happening for this player.
+     */
+    public double getValueOfOfferForThisPlayer(DealOffer offer, Player playerReceivingOffer,
+            Player playerOffering) {
+        return getValueOfOffer(offer, playerReceivingOffer, playerOffering, owningPlayer);
+    }
+    
+     /**
+     * Gets the value of the player receiving the offer of a given offer from
+     * the player making the offer.
+     * @param offer to get value of.
+     * @param playerReceivingOffer player who the offer is being made to.
+     * @param playerOffering player making the offer to this player.
+     * @return results output of the value of the offer.
+     */
+    public double getValueOfOfferForOtherPlayer(DealOffer offer, Player playerReceivingOffer,
+            Player playerOffering) {
+        return getValueOfOffer(offer, playerReceivingOffer, playerOffering, playerReceivingOffer);
+    }
+    
+    /**
+     * Gets the value of the player receiving the offer of a given offer from
+     * the player making the offer.
+     * @param offer to get value of.
+     * @param playerReceivingOffer player who the offer is being made to.
+     * @param playerOffering player making the offer to this player.
+     * @param playerToGetValueFor the player to get the value of the offer for.
+     * @return results output of the value of the offer.
+     */
+    public double getValueOfOffer(DealOffer offer, Player playerReceivingOffer,
+            Player playerOffering, Player playerToGetValueFor) {
+        //Get the aspects of the offer.
+        int cashOffered = offer.getOfferedCash();
+        int cashRequested = offer.getRequestedCash();
+        int totalCash = cashOffered - cashRequested;
+        Collection<Space> propertiesOffered = offer.getOfferedProperties();
+        Collection<Space> propertiesRequested = offer.getRequestedProperties();
+        int gOOJOffered = offer.getNumberOfferedGetOutOfJailCards();
+        int gOOJRequested = offer.getNumberRequestedGetOutOfJailCards();
+        //Money.
+        if (playerReceivingOffer.optionalMoneyChange(totalCash)) {
+            playerOffering.optionalMoneyChange(-totalCash);
+            //Get out of jail cards.
+            for (int i = 0; i < gOOJOffered; i++) {
+                Card card = playerOffering.removeGetOutOfJailCard();
+                playerReceivingOffer.addGetOutOfJailCard(card);
+            }
+            for (int i = 0; i < gOOJRequested; i++) {
+                Card card = playerReceivingOffer.removeGetOutOfJailCard();
+                playerOffering.addGetOutOfJailCard(card);
+            }
+            //Properties.
+            for (Space propertyOffered : propertiesOffered) {
+                propertyOffered.setOwner(playerReceivingOffer);
+            }
+            for (Space propertyRequested : propertiesRequested) {
+                propertyRequested.setOwner(playerOffering);
+            }
+            double result = getCurrentResults(playerToGetValueFor.getNumber());
+            
+            //Set inputs back.
+            //Cash
+            playerReceivingOffer.optionalMoneyChange(-totalCash);
+            playerOffering.optionalMoneyChange(+totalCash);
+            //Get out of jail cards.
+            for (int i = 0; i < gOOJOffered; i++) {
+                Card card = playerReceivingOffer.removeGetOutOfJailCard();
+                playerOffering.addGetOutOfJailCard(card);
+            }
+            for (int i = 0; i < gOOJRequested; i++) {
+                Card card = playerOffering.removeGetOutOfJailCard();
+                playerReceivingOffer.addGetOutOfJailCard(card);
+            }
+            //Properties.
+            for (Space propertyOffered : propertiesOffered) {
+                propertyOffered.setOwner(playerOffering);
+            }
+            for (Space propertyRequested : propertiesRequested) {
+                propertyRequested.setOwner(playerReceivingOffer);
+            }
+            return result;
+        } else {
+            //The player can't afford this offer so shouldn't accept.
+            return TDInputGenerator.BAD_OUTPUT_NUM;
+        }
+    }
+
+     /**
+     * Produces a single entry from a map with size 1.
+     * @param <Type1> the first type in the map.
+     * @param <Type2> the second type in the map.
+     * @param map the size one map to get the entry from.
+     * @return A single entry from the Map.
+     */
+    public <Type1, Type2> Map.Entry<Type1,Type2> generateMapEntry(Map<Type1,Type2> map) {
+        if (map.size() == 1) {
+            for (Map.Entry firstEntry : map.entrySet()) {
+                return firstEntry;
+            }
+        } else {
+            System.err.println("Trying to generate a map entry for a list with"
+                    + "a size of " + map.size() + " when this should only happen "
+                    + "for those with a size of 1.");
+            System.exit(0);
+        }
+        return null;
+    }
+    
+    /**
+     * Picks the best result from a list of results and returns a map entry
+     * of the value of picking this result and the thing to pick from the
+     * list which corresponds with this result.
+     * @param <Type> Type of Space to use in the map.
+     * @param results set of results to choose from.
+     * @param listToChooseFrom list to choose winning subtype of space from
+     * based on which result was best.
+     * @return Map.Entry<Double, Type> of the winning result and the choice
+     * associated with it.
+     */
+    public <Type> Map.Entry<Double, Type> 
+            getBestResult(List<Double> results, List<Type> listToChooseFrom) {
+        //Choose the best result from the list of results for this player.
+        Map.Entry<Integer, Double> result = 
+                pickFromResults(results);
+        
+        //generate a map entry for this result and return it.
+        Map<Double, Type> resultMap = new HashMap();
+        //Thes best result at results.getKey() - 1 as the results list
+        //includes the original current results.
+        Type bestResult = listToChooseFrom.get(result.getKey());
+        resultMap.put(result.getValue(), bestResult);
+        return generateMapEntry(resultMap);
+       
+    }
+
+/**
+ * Methods for printing out the valuations of the AI.
+ */    
+    
+    /**
+     * Prints all the valuations held by the AI.
+     */
+    public void printValuations() {
+        printPropertyMostWorthBuyingHouseOn();
+        printPropertyMostWorthSellingHouseOn();
+        printPropertyMostWorthMortgaging();
+        printPropertyMostWorthUnMortgaging();
+        printOfferMostWorthMaking();
+    }
+    
+    /**
+     * Prints the property the AI believes is most worth buying a house on.
+     */
+    public void printPropertyMostWorthBuyingHouseOn() {
+        printInformation(
+                "Property most worth Buying house on..",
+                this.getPropertyMostWorthBuyingHouseOn(owningPlayer)
+                .getValue().getName(),
+                this.getPropertyMostWorthBuyingHouseOn(owningPlayer).getKey());
+    }
+    
+    /**
+     * Prints the property the AI believes is most worth selling a house on.
+     */
+    public void printPropertyMostWorthSellingHouseOn() {
+        printInformation(
+                "Property most worth Selling house on..",
+                this.getPropertyMostWorthSellingHouseOn()
+                .getValue().getName(),
+                this.getPropertyMostWorthSellingHouseOn().getKey());
+    }
+    
+    /**
+     * Prints the property the AI believes is most worth mortgaging.
+     */
+    public void printPropertyMostWorthMortgaging() {
+        printInformation(
+                "Property most worth Mortgaging..",
+                this.getPropertyMostWorthMortgaging().getValue().getName(),
+                this.getPropertyMostWorthMortgaging().getKey());
+    }
+    
+    /**
+     * Prints the property the AI believes is most worth unmortgaging.
+     */
+    public void printPropertyMostWorthUnMortgaging() {
+        printInformation(
+                "Property most worth Unmortgaging..",
+                this.getPropertyMostWorthUnMortgaging()
+                .getValue().getName(),
+                this.getPropertyMostWorthUnMortgaging().getKey());
+    }
+    
+    /**
+     * Prints the Deal Offer the AI believes is most worth making.
+     */
+    public void printOfferMostWorthMaking() {
+        System.out.println("Deal most worth making..");
+        System.out.println("Offer to player: " + 
+                this.getOfferMostWorthMaking().getValue().getKey().getNumber());
+        DealOffer offer = this.getOfferMostWorthMaking().getValue().getValue();
+        System.out.println("Cash offered: " +  offer.getOfferedCash());
+        
+        System.out.println("Get out of Jail Cards offered: " 
+                + offer.getNumberOfferedGetOutOfJailCards());
+        System.out.println("Properties offered...");
+        for (Space space : offer.getOfferedProperties()) {
+            System.out.print(space.getName() + ", ");
+        }
+        System.out.println("Cash requested: " + offer.getRequestedCash());
+        System.out.println("Get out of Jail Card requested: " +
+                offer.getNumberRequestedGetOutOfJailCards());
+        System.out.println("Properties Requested...");
+        for (Space space : offer.getRequestedProperties()) {
+            System.out.print(space.getName() + ", ");
+        }
+        System.out.println("Valuation: " + this.getOfferMostWorthMaking().getKey());
+    }
+    
+    /**
+     * Method used to print bits of information.
+     * @param title of the information.
+     * @param thingsName name of the thing to print.
+     * @param value of the thing printed.
+     */
+    private void  printInformation(String title, String thingsName, Double value) {
+        System.out.println(title);
+        System.out.println(thingsName);
+        System.out.print("Value: ");
+        System.out.println(value);
+        System.out.println();
+    }
+
+    /**
+     * Gets the player who owns this move evaluator. 
+     * @return the player who owns this move evaluator.
+     */
+    public Player getOwningPlayer() {
+        return owningPlayer;
+    }
+    
+    
+    
+}

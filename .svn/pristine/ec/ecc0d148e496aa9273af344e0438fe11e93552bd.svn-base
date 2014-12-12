@@ -1,0 +1,34 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Model.Board;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+
+/**
+ *
+ * @author Chris
+ */
+public class AbstractTDPlayerV2Test extends AbstractTDPlayer {
+    
+    public AbstractTDPlayerV2Test(int setToken, Board currentBoard, 
+            Critic critic, TDInputGenerator inputGen, boolean randomMoves) {
+        super(setToken,currentBoard,critic,inputGen,randomMoves);
+    }
+    
+    /**
+     * Alerts the TD Player they have bought a property so the last set of
+     * inputs can be updated.
+     */
+    @Override
+    public void changePreviousInputsToCurrentInputs() {
+        if (previousInputs != null) {
+            critic.generalize(previousInputs, 
+                moveEvaluator.getCurrentResultsArray(this.getNumber()));
+        }
+        this.previousInputs = inputGen.getCurrentInputs(this.getNumber());
+    }
+    
+}

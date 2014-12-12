@@ -1,0 +1,307 @@
+package Model.Players;
+
+import Model.Board;
+import Model.DealOffer;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.TDInputGenerators.TDInputGenerator;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+/**
+ * This class performs some checks before continuing as a normal TD AI.
+ * @author Chris Berry
+ */
+public class TDPlayerHandCraftedFeatures extends TDPlayer {
+    
+    private int offersToConsider = 40;
+    
+    /**
+     * Creates a new TD Player with some Hand Crafted Additions.
+     * @param setToken the token number the player will use.
+     * @param currentBoard the current board the player will play on.
+     * @param critic the critic the player will use.
+     * @param inputGen the input generator the player will use.
+     * @param randomMoves true if the player will use random moves a small
+     * percentage of the time.
+     */
+    public TDPlayerHandCraftedFeatures(int setToken, Board currentBoard, 
+            Critic critic, TDInputGenerator inputGen, boolean randomMoves) {
+        super(setToken, currentBoard, critic, inputGen, randomMoves);
+    }
+    
+    /**
+     * The player will not make an offer to another player if the offer
+     * gives the other player a Monopoly without giving this player a Monopoly
+     * at the same time.
+     * @param dealOffer Deal Offer to assess.
+     * @param playerToMakeOfferTo other player receiving the offer.
+     */
+    @Override
+    public void makeAnOfferToAnotherPlayer(DealOffer dealOffer,
+            Player playerToMakeOfferTo) {
+        //If the deal doesn't give the other player a Monopoly or this
+        //player gains a Monopoly from the deal then the offer can be made.
+        if (!doesOtherPlayerAcceptingGiveThemAMonopoly(dealOffer, playerToMakeOfferTo)
+                || doesMakingDealGiveThisPlayerAMonopoly(dealOffer)) {
+            super.makeAnOfferToAnotherPlayer(dealOffer, playerToMakeOfferTo);
+        }
+    }
+    
+    /**
+     * The TD Player will not accept an offer if it gives the other player a
+     * Monopoly without giving this player a Monopoly.
+     * @param offer to analyse.
+     * @param playerOffering the player who made this offer.
+     * @return true if the player has accepted the offer, otherwise false.
+     */
+    @Override
+    public boolean assessAnOffer(DealOffer offer, Player playerOffering) {
+        //If the deal doesn't give the other player a Monopoly or this
+        //player gains a Monopoly from the deal then the offer can be made.
+        if (!doesAcceptingThisDealGiveOtherPlayerMonopoly(offer, playerOffering)
+                || doesReceivingDealGiveThisPlayerAMonopoly(offer)) {
+            return super.assessAnOffer(offer, playerOffering);
+        }
+        //If the offer isn't worth accepting then nothing needs to happen.
+        return false;
+    }
+    
+    /**
+     * The player handles things differently if it is one property off gaining
+     * a Monopoly. The player tries to make a deal that means he gets a Monopoly
+     * and looks at a subset of deals, using the one which the AI believes
+     * the other AI will accept and maximises its own payoff.
+     * @return 
+     */
+    @Override
+    public Map.Entry<Double, Map.Entry<Player, DealOffer> > getOfferMostWorthMaking() {
+        Set<Integer> colorsWherePlayerIsOneOffMonopoly = new HashSet();
+        
+        //Gets all colors where player is one off a Monopoly.
+        for (int color = Board.BROWN; color <= Board.BLUE; color++) {
+            if (SiteGroup.playerIsOneOffMonopoly(color, this)) {
+                colorsWherePlayerIsOneOffMonopoly.add(color);
+            }
+        }
+        
+        //If there is no properties the player is one color off making a Monopoly,
+        //make deals as normal.
+        if (colorsWherePlayerIsOneOffMonopoly.isEmpty()) {
+            return super.getOfferMostWorthMaking();
+        }
+        
+        //For each of the colors where player is one off a Monopoly check if other
+        //players have the site required to complete the Monopoly.
+        List<Site> sitesPlayerWants = new ArrayList();
+        for (int color : colorsWherePlayerIsOneOffMonopoly) {
+            List<Site> sitesInColor = SiteGroup.getSitesPlayerDoesNotOwnInAColor(color, this);
+            if (sitesInColor.size() != 1) {
+                System.err.println("Sites in color is not 1, when earlier checks"
+                        + " dictate it should be");
+            }
+            sitesPlayerWants.add(sitesInColor.get(0));
+        }
+        
+        
+        //Now there is a list of the sites the player wants the player should
+        //try and make deals for them.
+        double bestValue = 0;
+        Map.Entry<Double, Map.Entry<Player, DealOffer> > bestResult = null;
+        for (Site sitePWants : sitesPlayerWants) {
+            //If the site is owned by a player.
+            if (sitePWants.getOwner() != null) {
+                Map.Entry<Double, Map.Entry <Player, DealOffer> > bestOffer 
+                        = generateDealOffers(sitePWants);
+                if (bestOffer != null && bestOffer.getKey() > bestValue) {
+                    bestValue = bestOffer.getKey();
+                    bestResult = bestOffer;
+                }
+            }
+        }
+        return bestResult;
+        
+    }
+    
+    /**
+     * The AI won't try and mortgage properties with houses on them already.
+     * @return 
+     */
+    @Override
+    public Map.Entry<Double, Space> getPropertyMostWorthMortgaging() {
+        List<Space> mortgableProperties = this.getMortgagableProperties();
+        List<Space> copyOfMortgableProperties = new ArrayList(mortgableProperties);
+        //Removes all properties with houses on them.
+        for (Space space : copyOfMortgableProperties) {
+            if (space.getClass().equals(Site.class)) {
+                Site site = (Site)space;
+                if (site.getHouses() > 0) {
+                    mortgableProperties.remove(space);
+                }
+            }
+        }
+        //If the properties without houses have all been mortgaged, mortgage
+        //those with houses.
+        if (!mortgableProperties.isEmpty()) {
+            return this.moveEvaluator.
+                    getPropertyMostWorthMortgagingFromSelection(mortgableProperties);
+        } else {
+            return this.moveEvaluator.
+                    getPropertyMostWorthMortgagingFromSelection(copyOfMortgableProperties);
+        }
+    }
+    
+    /**
+     * Checks if accepting this deal gives this player a Monopoly.
+     * @param offer deal offer to assess.
+     * @return true if this deal gives this player a Monopoly.
+     */
+    public boolean doesReceivingDealGiveThisPlayerAMonopoly(DealOffer offer) {
+        return playerOwningPropertiesMeansTheyHaveAMonopoly(offer.getOfferedProperties(), this);
+    }
+    
+    /**
+     * Checks if accepting this deal gives the other player a Monopoly.
+     * @param offer to assess.
+     * @param playerOffering the other player making this offer.
+     * @return true if this deal gives the other player a Monopoly.
+     */
+    public boolean doesAcceptingThisDealGiveOtherPlayerMonopoly(DealOffer offer,
+            Player playerOffering) {
+        return playerOwningPropertiesMeansTheyHaveAMonopoly(offer.getRequestedProperties(), playerOffering);
+    }
+    
+    /**
+     * Checks if making this deal gives this player a Monopoly.
+     * @param offer to assess.
+     * @return true if the other player accepting the deal would gives this
+     * player a Monopoly.
+     */
+    public boolean doesMakingDealGiveThisPlayerAMonopoly(DealOffer offer) {
+        return playerOwningPropertiesMeansTheyHaveAMonopoly(offer.getRequestedProperties(), this);
+    }
+    
+    /**
+     * Checks if the other player accepting this deal means they have a Monopoly.
+     * @param offer to assess.
+     * @param playerToMakeOfferTo player offer is to be sent to.
+     * @return true if the other player accepting the offer would mean they
+     * have a Monopoly.
+     */
+    public boolean doesOtherPlayerAcceptingGiveThemAMonopoly(DealOffer offer,
+            Player playerToMakeOfferTo) {
+        return playerOwningPropertiesMeansTheyHaveAMonopoly(offer.getOfferedProperties(), playerToMakeOfferTo);
+    }
+    
+    /**
+     * Checks if the player owning the List of properties would mean they would
+     * have a Monopoly in any of the properties that have been given to them.
+     * @param properties to temporarily give to the other player.
+     * @param playerToGivePropertiesTo player to do check for.
+     * @return true if the player has a Monopoly when they own these properties.
+     */
+    public boolean playerOwningPropertiesMeansTheyHaveAMonopoly(List<Space> properties,
+            Player playerToGivePropertiesTo) {
+        boolean playerWouldHaveMonopoly = false;
+        if (properties.isEmpty()) {
+            return false;
+        }
+        Player propertyOriginalOwner = properties.get(0).getOwner();
+        
+        //Set properties to be owned by other player.
+        for (Space property: properties) {
+            property.setOwner(playerToGivePropertiesTo);
+        }
+        
+        //Check if this gives the other player a Monopoly.
+        for (Space property : properties) {
+            if (SiteGroup.playerOwnsAMonopoly(property.getColorNumber())) {
+                playerWouldHaveMonopoly = true;
+            }
+        }
+        
+        //Set properties back.
+        for (Space property: properties) {
+            property.setOwner(propertyOriginalOwner);
+        }
+        
+        
+        return playerWouldHaveMonopoly;
+    }
+    
+    /**
+     * The AI generates a List of random potential deal offers for a given site.
+     * The AI can later assess the value of all these deal offers.
+     * @param siteToGetOffersFor Site the player wants to try and make offers 
+     * involving.
+     * @return 
+     */
+    public Map.Entry<Double, Map.Entry<Player,DealOffer> > generateDealOffers(Site siteToGetOffersFor) {
+        Player playerToOfferTo = siteToGetOffersFor.getOwner();
+        int maxPropertiesInOffer = 4;
+        double bestOfferValue = 0;
+        DealOffer bestOffer = null;
+        for (int numOffers = 0; numOffers < offersToConsider; numOffers++) {
+            Random random = new Random();
+            //Trade up to 4 properties or the maximum amount of properties
+            //this player has.
+            int numPropertiesToOffer = random.nextInt(maxPropertiesInOffer);
+            if (this.getProperties().size() < numPropertiesToOffer) {
+                numPropertiesToOffer = this.getProperties().size();
+            }
+            
+            DealOffer offer = new DealOffer();
+
+            for (int i = 0; i < numPropertiesToOffer; i++) {
+                int propertyNumber 
+                        = random.nextInt(this.getProperties().size());
+                offer.addPropertyToOffer(this.getProperties().get(propertyNumber));
+            }
+
+            offer.addPropertyToRequest(siteToGetOffersFor);
+
+            //Money
+            if (random.nextInt(2) == 0) {
+                if (this.getMoney() > 0) {
+                    int money = random.nextInt(this.getMoney());
+                    offer.offerCash(money);
+                }
+            } else {
+                if (playerToOfferTo.getMoney() > 0) {
+                    int money = random.nextInt(playerToOfferTo.getMoney());
+                    offer.requestCash(money);
+                }
+            }
+            
+            double valueOfOffer = 
+                    moveEvaluator.getValueOfOfferForThisPlayer(offer, playerToOfferTo, this);
+            double otherPlayersValuation =
+                    moveEvaluator.getValueOfOfferForOtherPlayer(offer, playerToOfferTo, this);
+            double otherPlayersCurrentResults = moveEvaluator.getCurrentResults(playerToOfferTo.getNumber());
+            if (otherPlayersValuation > otherPlayersCurrentResults
+                    && valueOfOffer > bestOfferValue) {
+                bestOfferValue = valueOfOffer;
+                bestOffer = offer;
+            }
+        }
+        
+        if (bestOffer == null) {
+            return null;
+        }
+        Map<Player,DealOffer> playerOfferMap = new HashMap();
+        playerOfferMap.put(playerToOfferTo, bestOffer);
+        Map<Double, Map.Entry<Player,DealOffer> > resultMap = new HashMap();
+        resultMap.put(bestOfferValue, moveEvaluator.generateMapEntry(playerOfferMap));
+        return moveEvaluator.generateMapEntry(resultMap);
+    }
+    
+    
+    
+}

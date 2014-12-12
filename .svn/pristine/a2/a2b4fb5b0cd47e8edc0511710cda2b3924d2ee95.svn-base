@@ -1,0 +1,76 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Players.Player;
+import Model.Spaces.Site;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.GridLayout;
+import Model.Spaces.Space;
+
+
+/**
+ *
+ * @author chris
+ */
+public class MortgagePropertiesMenu extends ActionFrame{
+    
+    public MortgagePropertiesMenu(Player currentPlayer) {
+        super(currentPlayer.getMortgagableProperties());
+    }
+    
+    @Override
+    public JPanel setUpMainPanel(List<? extends Space> spaces) {
+        JPanel mortgagePanel = new JPanel();
+        mortgagePanel.setLayout(new BoxLayout(mortgagePanel, BoxLayout.Y_AXIS));
+        JPanel titlesPanel = new JPanel();
+        titlesPanel.setLayout(new GridLayout());
+        JLabel propertyLabel = new JLabel("Property");
+        Font boldFont =new Font(propertyLabel.getFont().getName(), Font.BOLD, 
+                propertyLabel.getFont().getSize());  
+        propertyLabel.setFont(boldFont);
+        titlesPanel.add(propertyLabel);
+        
+        JLabel housesLabel = new JLabel("Payment for mortgaging");
+        housesLabel.setFont(boldFont);
+        titlesPanel.add(housesLabel);
+        
+        JLabel buyHousesLabel = new JLabel("Mortgage Property");
+        buyHousesLabel.setFont(boldFont);
+        titlesPanel.add(buyHousesLabel);
+        mortgagePanel.add(titlesPanel);
+        for (Space space : spaces) {
+            mortgagePanel.add(createSitePanel(space));
+        }
+        
+        return mortgagePanel;
+    }
+    
+    public JPanel createSitePanel(final Space space) {
+        JPanel sitePanel = new JPanel();
+        sitePanel.setLayout(new GridLayout());
+//        sitePanel.setLayout(new BoxLayout(sitePanel, BoxLayout.X_AXIS));
+        sitePanel.add(new JLabel(space.getName()));
+        sitePanel.add(new JLabel("" + space.getMortgageRate()));
+        JButton buyHouseButton = new JButton("");
+        buyHouseButton.setAction(new AbstractAction("Mortgage Property") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setPropertySelected(space);
+            }
+        });
+        sitePanel.add(buyHouseButton);
+        return sitePanel;
+    } 
+    
+}

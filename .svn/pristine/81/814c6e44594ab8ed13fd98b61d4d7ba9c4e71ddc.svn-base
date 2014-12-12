@@ -1,0 +1,252 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model;
+
+import java.util.HashMap;
+import java.util.Map;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.List;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+
+/**
+ *
+ * @author Chris
+ */
+public class GameStats {
+    
+    private static Map<Integer, Integer> numberOfDealsOffered = new HashMap();
+    private static Map<Integer, Integer> numberOfDealsAccepted = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesBought = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesMortgaged = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesUnMortgaged = new HashMap();
+    private static Map<Integer, Integer> numberOfHousesBought = new HashMap();
+    private static Map<Integer, Integer> numberOfHousesSold = new HashMap();
+    private static int numPlayers;
+    
+    
+    private static int spaceBoughtNum = 0;
+    private static int houseBoughtNum = 1;
+    private static int houseSoldNum = 2;
+    private static int timesOfferedInDeal = 3;
+    private static int timesRequestedInDeal = 4;
+    private static int timesGivenAsPartOfDeal = 5;
+    private static int timesAcceptedAsPartOfDeal = 6;
+    private static int spaceMortgagedNum = 7;
+    private static int spaceUnmortgagedNum = 8;
+    
+    private static Map<Space, Integer> spacesBought = new HashMap();
+    private static Map<Space, Integer> housesBought = new HashMap();
+    private static Map<Space, Integer> housesSold = new HashMap();
+    private static Map<Space, Integer> spacesMortgaged = new HashMap();
+    private static Map<Space, Integer> spaceUnmortgaged = new HashMap();
+    
+    private static Map<String, List<Integer> > fullSpaceMap = new HashMap();
+    
+    private static List<DealOffer> dealOffers = new ArrayList();
+    private static List<DealOffer> acceptedDeals = new ArrayList();
+    
+    public GameStats() {
+       
+    }
+    
+    public static void setUpGameStats(int numberOfPlayers) {
+        numPlayers = numberOfPlayers;
+        for (int i = 0; i < numberOfPlayers; i++) {
+            numberOfDealsOffered.put(i,0);
+            numberOfDealsAccepted.put(i,0);
+            numberOfPropertiesBought.put(i,0);
+            numberOfPropertiesMortgaged.put(i,0);
+            numberOfPropertiesUnMortgaged.put(i,0);
+            numberOfHousesBought.put(i,0);
+            numberOfHousesSold.put(i,0);
+        }
+    }
+    
+    private static <Type> void addToMap(Type type, Map<Type, Integer> map) {
+        int newValue;
+        if (map.containsKey(type)) {
+            int oldValue = map.get(type);
+            newValue = oldValue + 1;
+        } else {
+            newValue = 1;
+        }
+        
+        map.put(type, newValue);
+    }
+    
+    private static void addToFullSpaceMap(String spaceName, int spaceNum) {
+        if (spaceName.contains(",")) {
+            spaceName = spaceName.replace(",", "-");
+        }
+        if (fullSpaceMap.containsKey(spaceName)) {
+            List<Integer> numberList = fullSpaceMap.get(spaceName);
+            int oldVal = numberList.get(spaceNum);
+            int newVal = oldVal + 1;
+            numberList.remove(spaceNum);
+            numberList.add(spaceNum, newVal);
+//            fullSpaceMap.remove(space);
+            fullSpaceMap.put(spaceName,numberList);
+        } else {
+            List<Integer> numberList = new ArrayList();
+            for (int i = 0; i < spaceUnmortgagedNum + 1; i++) {
+                if (i != spaceNum) {
+                    numberList.add(0);
+                } else {
+                    numberList.add(1);
+                }
+            }
+            fullSpaceMap.put(spaceName, numberList);
+        }
+    }
+     
+    public static void addDealOffered(int playerNumber, DealOffer offer) {
+        addToMap(playerNumber, numberOfDealsOffered);
+        dealOffers.add(offer);
+        
+        for (Space space : offer.getOfferedProperties()) {
+            addToFullSpaceMap(space.getName(), timesOfferedInDeal);
+        }
+        
+        for (Space space : offer.getRequestedProperties()) {
+            addToFullSpaceMap(space.getName(), timesRequestedInDeal);
+        }
+    }
+    
+    public static void addDealAccepted(int playerNumber, DealOffer offer) {
+        addToMap(playerNumber, numberOfDealsAccepted);
+        acceptedDeals.add(offer);
+        for (Space space : offer.getOfferedProperties()) {
+            addToFullSpaceMap(space.getName(), timesAcceptedAsPartOfDeal);
+        }
+        
+        for (Space space : offer.getRequestedProperties()) {
+            addToFullSpaceMap(space.getName(), timesGivenAsPartOfDeal);
+        }
+    }
+    
+    public static void addPropertyBought(int playerNumber, Space property) {
+        addToMap(playerNumber, numberOfPropertiesBought);
+        addToMap(property, spacesBought);
+        addToFullSpaceMap(property.getName(), spaceBoughtNum);
+    }
+    
+    public static void addPropertyMortgaged(int playerNumber, Space property) {
+        addToMap(playerNumber, numberOfPropertiesMortgaged);
+        addToMap(property, spacesMortgaged);
+        addToFullSpaceMap(property.getName(), spaceMortgagedNum);
+    }
+    
+    public static void addPropertyUnMortgaged(int playerNumber, Space property) {
+        addToMap(playerNumber, numberOfPropertiesUnMortgaged);
+        addToMap(property, spaceUnmortgaged);
+        addToFullSpaceMap(property.getName(), spaceUnmortgagedNum);
+    }
+    
+    public static void addNumberOfHousesBought(int playerNumber, Space property) {
+        addToMap(playerNumber, numberOfHousesBought);
+        addToMap(property, housesSold);
+        addToFullSpaceMap(property.getName(), houseBoughtNum);
+    }
+    
+    public static void addNumberOfHousesSold(int playerNumber, Space property) {
+        addToMap(playerNumber, numberOfHousesSold);
+        addToMap(property, housesBought);
+        addToFullSpaceMap(property.getName(), houseSoldNum);
+    }
+    
+    public static void printStats() {
+        for (int i = 0; i < numPlayers; i++) {
+            System.out.println("Stats for player " + i + ":");
+            System.out.println("Number of deals offered: " 
+                    + numberOfDealsOffered.get(i));
+            System.out.println("Number of deals accepted: " 
+                    + numberOfDealsAccepted.get(i));
+            System.out.println("Number of properties bought: " 
+                    + numberOfPropertiesBought.get(i));
+            System.out.println("Number of properties mortgaged: " 
+                    + numberOfPropertiesMortgaged.get(i));
+            System.out.println("Number of properties unmortgaged: " 
+                    + numberOfPropertiesUnMortgaged.get(i));
+            System.out.println("Number of houses bought: " 
+                    + numberOfHousesBought.get(i));
+            System.out.println("Number of houses sold: " 
+                    + numberOfHousesSold.get(i));
+        }
+        printAllPurchaseNumberStats();
+    }
+    
+    public static void printAllPurchaseNumberStats() {
+        printMapContents(spacesBought, "Spaces bought");
+        printMapContents(housesBought, "Houses bought");
+        printMapContents(housesSold, "Houses sold");
+        printMapContents(spacesMortgaged, "Spaces mortgaged");
+        printMapContents(spaceUnmortgaged, "Spaces unmortgaged");
+    }
+    
+    public static void printMapContents(Map<Space, Integer> map, String message) {
+        for (Map.Entry<Space, Integer> entry : map.entrySet()) {
+            System.out.print(entry.getKey().getName());
+            System.out.println(": " + entry.getValue() + " " + message);
+        }
+    }
+    
+    public static void writeToCSV(String fileName) {
+        
+        File file = new File(fileName);
+
+        // if file doesnt exists, then create it
+        try {
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+        
+
+            FileWriter fw = new FileWriter(file.getAbsoluteFile());
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(getCSVString());
+            bw.close();
+            
+        } catch (IOException e) {
+            System.err.println(e);
+        }
+    }
+    public static String getCSVString() {
+        String fullStr = "";
+        fullStr += "Space,";
+        fullStr += "Spaces bought,";
+        fullStr += "Houses bought,";
+        fullStr += "Houses sold,";
+        fullStr += "Times offered in deal,";
+        fullStr += "Times requested in deal,";
+        fullStr += "Times given as part completed deal,";
+        fullStr += "Times accepted as part of completed deal,";
+        fullStr += "Times mortgaged,";
+        fullStr += "Time un-mortgaged,";
+        fullStr += "\n";
+        
+        for (Map.Entry<String, List<Integer> > entry : fullSpaceMap.entrySet()) {
+            fullStr += entry.getKey() + ",";
+            for (Integer value : entry.getValue()) {
+                fullStr += value + ",";
+            }
+            fullStr += "\n";
+        }
+        return fullStr;
+    }
+    
+    public static String getCSVMapString(Map<Space, Integer> map) {
+        String fullStr = "";
+        for (Map.Entry<Space, Integer> entry : map.entrySet()) {
+            fullStr += entry.getKey().getName() + "," + entry.getValue() + "\n"; 
+        }
+        return fullStr;
+    }
+     
+}

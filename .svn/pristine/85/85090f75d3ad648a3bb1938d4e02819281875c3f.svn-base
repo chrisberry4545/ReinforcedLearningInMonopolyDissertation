@@ -1,0 +1,105 @@
+package Model.Spaces;
+
+/**
+ * Represents a square the player can land on within the Monopoly board.
+ * @author Chris Berry
+ */
+public enum SpaceEnums {
+    
+    GO("GO"),
+    OLDKENTRD("Old Kent Road"),
+    COMMCHEST("Community Chest"),
+    WHITECHAPRD("Whitechapel Road"),
+    INCOMETAX ("Income Tax"),
+    KINGSXSTN ("Kings Cross Station"),
+    ANGEL ("The Angel, Islington"),
+    CHANCE ("Chance"),
+    EUSTONRD ("Euston Road"),
+    PENTONVILLERD ("Pentonville Road"),
+    JAIL ("Jail"),
+    PALLMALL ("Pall Mall"),
+    ELECTRICUTIL ("Electric Company"),
+    WHITEHALL ("Whitehall"),
+    NORTHUMBERLANDAV ("Northumberland Avenue"),
+    MARLYEBONESTN ("Marylebone Station"),
+    BOWST ("Bow Street"),
+    MARLBOROUGHST ("Marlborough Street"),
+    VINEST ("Vine Street"),
+    FREEPARKING ("Free Parking"),
+    STRAND ("Strand"),
+    FLEETST ("Fleet Street"),
+    TRAFALGARSQ ("Trafalgar Square"),
+    FENCHURCHST ("Fenchurch Station"),
+    LEICESTERSQ ("Leicester Square"),
+    COVENTRYST ("Coventry Street"),
+    WATERUTIL ("Water Works"),
+    PICCADILLY ("Piccadilly"),
+    GOTOJAIL ("GO TO JAIL"),
+    REGENTST ("Regent Street"),
+    OXFORDST ("Oxford Street"),
+    BONDST ("Bond Street"),
+    LIVERPOOLSTSTN ("Liverpool Street Station"),
+    PARKLANE ("Park Lane"),
+    SUPERTAX ("Super Tax"),
+    MAYFAIR ("Mayfair");
+    
+    
+    
+    private String name;
+    private int spaceNumber;
+    
+    
+    
+    
+   
+    
+    
+    
+    public static final int GO_NUMBER = 0;
+    public static final int INCOME_TAX_NUMBER = 4;
+    public static final int KINGS_CROSS_NUMBER = 5;
+    public static final int ANGEL_NUMBER = 6;
+    public static final int EUSTON_RD_NUMBER = 8;
+    public static final int PENTONVILLE_NUMBER = 9;
+    public static final int JAIL_NUMBER = 10;
+    public static final int PALL_MALL_NUMBER = 11;
+    public static final int ELECTRIC_COMPANY_NUMBER = 12;
+    public static final int WHITEHALL_NUMBER = 13;
+    public static final int NORTHUMBERLANDAV_NUMBER = 14;
+    public static final int MARYLEBONE_NUMBER = 15;
+    public static final int BOW_ST_NUMBER = 16;
+    public static final int MARLBOUROUGH_NUMBER = 18;
+    public static final int VINE_ST_NUMBER = 19;
+    public static final int FREEPARKING_NUMBER = 20;
+    public static final int STRAND_NUMBER = 21;
+    public static final int FLEET_ST_NUMBER = 23;
+    public static final int TRAFALGAR_SQ_NUMBER = 24;
+    public static final int FENCHURCH_NUMBER = 25;
+    public static final int WATER_COMPANY_NUMBER = 28;
+    public static final int PICCADILLY_NUMBER = 29;
+    public static final int GO_TO_JAIL_NUMBER = 30;
+    public static final int REGENT_ST_NUMBER = 31;
+    public static final int OXFORD_ST_NUMBER = 32;
+    public static final int BOND_ST_NUMBER = 34;
+    public static final int LIVERPOOL_ST_NUMBER = 35;
+    public static final int PARK_LANE_NUMBER = 37;
+    public static final int SUPER_TAX_NUMBER = 38;
+    public static final int MAYFAIR_NUMBER = 39;
+    
+    /**
+     * Creates a new SpaceEnum with the given name.
+     * @param name to give SpaceEnum.
+     */
+    private SpaceEnums (String name) {
+        this.name = name;
+    }
+    
+    /**
+     * Gets the name of the SpaceEnum.
+     * @return name of SpaceEnum
+     */
+    public String getName() {
+        return name;
+    }
+    
+}

@@ -1,0 +1,27 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+
+/**
+ * Cards that take or give money to the player.
+ * @author chris
+ */
+public class ChangeMoneyCard extends AbstractCardAction{
+    
+    private int moneyAmountToChange = 0;
+    
+    public ChangeMoneyCard(int changeMoney) {
+        this.moneyAmountToChange = changeMoney;
+    }
+    
+    @Override
+    public void performAction(Player player) {
+        player.forcedMoneyChange(moneyAmountToChange, Bank.getInstance());
+    }
+    
+}

@@ -1,0 +1,66 @@
+package Model.Players;
+
+import Model.Board;
+
+/**
+ *
+ * @author Chris
+ */
+public abstract class TDInputGenerator {
+    
+    public static final double BAD_OUTPUT_NUM = -100000;
+    protected Board board;
+    private boolean useDealSubsets;
+    
+    public TDInputGenerator(boolean useDealSubsets) {
+        this.useDealSubsets = useDealSubsets;
+    }
+    
+    public void setBoard(Board board) {
+        this.board = board;
+    }
+    
+/**
+ * Abstract methods that need to be overridden.
+ */
+    
+     /**
+     * Gets the number of input nodes used by the TD AI.
+     * @return number of input nodes.
+     */
+    public abstract int getNumInputNodes();
+    
+    /**
+     * Gets the number of Output nodes used by the TD AI.
+     * @return number of output nodes.
+     */
+    public abstract int getNumOutputNodes();
+    
+    /**
+     * Gets the number of hidden nodes used by the TD AI.
+     * @return number of hidden nodes.
+     */
+    public abstract int getNumHiddenNodes();
+    
+    /**
+     * Gets an array of bad output values used by the TD AI. This will
+     * correspond to the number of output nodes used.
+     * @return an array of bad output values equal in length to the number
+     * of output nodes.
+     */
+    public abstract double[] getBadOutputArray();
+    
+     /**
+     * Gets an array representing the current inputs for the neural network
+     * based on the current state of the board.
+     * @return 
+     */
+    public abstract double[] getCurrentInputs(int playerNumber);        
+
+    public boolean isUseDealSubsets() {
+        return useDealSubsets;
+    }
+    
+    
+    
+}

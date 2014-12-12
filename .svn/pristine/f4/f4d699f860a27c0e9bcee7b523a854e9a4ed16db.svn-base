@@ -1,0 +1,28 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+import Model.Players.Player;
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class MoveBackwards extends CardAction {
+    
+    private int spacesToMoveBack = 3;
+    
+    public MoveBackwards() {
+        
+    }
+    
+    /**
+     * Moves the player back a number of spaces
+     */
+    @Override
+    public void performAction(Player player) {
+        Game.getInstance().movePlayer(player, -spacesToMoveBack);
+    }
+}

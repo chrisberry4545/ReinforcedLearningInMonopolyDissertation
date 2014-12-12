@@ -1,0 +1,246 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Controller;
+
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import Model.Players.*;
+import Display.BoardDisplay;
+import Model.*;
+import Model.Players.NeuralNetwork.Critic;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author chris
+ */
+public class ActionManager {
+    
+    private static ActionManager instance = null;
+    private BoardDisplay display;
+    private Board board;
+    private Game game;
+    private int gamesOver250Rounds = 0;
+    private boolean useDisplay;
+    private int maximumRounds = 65;
+    
+    protected ActionManager() {
+    }
+    
+    public int getGamesOver250Rounds() {
+        return gamesOver250Rounds;
+    }
+    
+    /**
+     * Starts a new game of Monopoly
+     * @param critic of the neural network to be used.
+     * @param showGameGraphics true if the graphics should be displayed.
+     * @param numHumanPlayers number of human players to include.
+     * @param numRandomAIs number of random AIs to include.
+     * @param numTDAIs number of TD AIs to include.
+     */
+    public void startNewGame(Critic critic, boolean showGameGraphics,
+            int numHumanPlayers, int numRandomAIs, int numTDAIs) {
+        int totalPlayers = numHumanPlayers + numRandomAIs + numTDAIs;
+        if (totalPlayers > Game.MAX_PLAYERS) {
+            System.err.println("Game can only have " + Game.MAX_PLAYERS +
+                    " you tried to start a game with " + totalPlayers);
+            System.exit(0);
+        }
+        ArrayList<Player> players = new ArrayList();
+        this.useDisplay = showGameGraphics;
+        if (this.useDisplay) {
+            display = new BoardDisplay();
+        }
+        game = Game.newGame();
+        board = game.getBoard();
+        int maxTokenNumber = 0;
+        //Add human players.
+        if (numHumanPlayers > 0 && !this.useDisplay) {
+            System.err.println("To use human players you need to turn the "
+                    + "display on");
+        } else {
+            for (int i = 0; i < numHumanPlayers; i++) {
+                players.add(new HumanPlayer(maxTokenNumber, display));
+                maxTokenNumber++;
+            }
+        }
+        //Add random Players
+        for (int i = 0; i < numRandomAIs; i++) {
+            players.add(new RandomAI(maxTokenNumber));
+            maxTokenNumber++;
+        }
+        //Add TD players.
+        for (int i = 0; i < numTDAIs; i++) {
+            players.add(new FirstTDPlayer(maxTokenNumber, board, critic));
+            maxTokenNumber++;
+        }
+        
+        game.addPlayers(players);
+        if (this.useDisplay) {
+            addPropertiesToBoardDisplay();
+        }
+        addPlayers();
+        startGame();
+    }
+ 
+    /**
+    * Returns an instance of the singleton class ActionManager
+    * @return ActionManager instance
+    */
+    public static ActionManager getInstance() {
+        if (instance == null) {
+            instance = new ActionManager();
+        }
+        return instance;
+    }
+    
+    /**
+     * Adds properties to display. Note: only called if this.useDisplay is true.
+     */
+    private void addPropertiesToBoardDisplay() {
+        int counter = 0;
+        for (Space space : board) {
+            display.addSpaceToDisplay(counter,space.getName());
+            counter++;
+        }
+        display.revalidate();
+    }
+    
+    /**
+     * Adds all players to the game and to the display if applicable.
+     */
+    private void addPlayers() {
+        for (Player player : game.getPlayers()) {
+            if (this.useDisplay) {
+                display.addPlayerMarker(player.getToken(), 0);
+            }
+            //Puts the player at go.
+            player.setSpace(board.get(0));       
+        }
+        game.setUpPlayersForGameStart();
+        if (this.useDisplay) {
+            display.revalidate();
+        }
+    }
+    
+    /**
+     * 
+     * @return true if the game is finished
+     */
+    public boolean isCurrentGameFinished() {
+        return game.isFinished();
+    }
+    
+    public void startGame() {
+        while (!game.isFinished()) {
+            Player player = game.nextPlayer();
+            if (player.inJail()) {
+                player.increaseJailCounter();
+            }
+            takeTurn(player);
+            if (game.getRoundCount() >= maximumRounds) {
+                game.declarePlayerWithMostAssetsWinner();
+            }
+        }
+        if (this.useDisplay) {
+            display.dispose();
+        }
+    }
+    
+    private void takeTurn(Player player) {
+        if (!player.inJail()) {
+                standardTurn(player);
+        } else {
+                inJailTurn(player);
+        }
+    }
+    
+    private void standardTurn(Player player) {
+        while (!player.askPlayerMoveOptions()) {
+            //This is repeated until the player indicates they are finished
+            //and want to roll for their turn.
+        }
+        rollDiceToMove(player);
+                
+    }
+    
+    private void inJailTurn(Player player) {
+        int n = player.askPlayerInJailOptions();
+        switch (n) {
+            //Pay to leave
+            case Player.PAY_TO_LEAVE : 
+                if (player.payToLeaveJail()) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                } else {
+                    player.messagePlayer("You don't have enough money "
+                            + "to leave jail.", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Roll to leave.
+            case Player.ROLL_TO_LEAVE : 
+                int diceRoll = player.rollToLeaveJail();
+                //Returns -1 if a double isn't rolled.
+                if (diceRoll != -1) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                    movePlayer(player, diceRoll);
+                } else {
+                    player.messagePlayer("You didn't roll a double.",
+                            "Still in jail");
+                    //Turn finishes in this case.
+                }
+                break;
+            //Use get out of jail card.
+            case Player.USE_GET_OUT_OF_JAIL_CARD : 
+                if (player.useGetOutOfJailCard()) {
+                    player.messagePlayer("Used get out of jail card",
+                            "Out of Jail");
+                } else {
+                    player.messagePlayer("You don't have a get out of jail"
+                            + " card", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Buy houses.
+            case Player.JAIL_BUY_HOUSES : 
+                //Buying houses is handled by the player class.
+                takeTurn(player);
+                break;
+        }
+    }
+    
+    /**
+     * Performs the appropriate actions for a players turn.
+     */
+    private void rollDiceToMove(Player player) {
+        int diceRoll = player.rollForTurn();
+        movePlayer(player, diceRoll);
+    }
+    
+    /**
+     * Moves the player by a given amount.
+     * @param player to move
+     * @param moveAmount 
+     */
+    private void movePlayer(Player player, int moveAmount) {
+        int newSpace = game.movePlayer(player, moveAmount);
+        if (this.useDisplay) {
+            display.movePlayer(player.getToken(), newSpace);
+            display.updateStatPanel(player.getToken(), player.getMoney());
+        }
+        handleProperty(player, moveAmount); 
+    }
+    
+    
+    private void handleProperty(Player player, int diceRoll) {
+        Space landedOn = player.getCurrentSpace();  
+        landedOn.performAction(diceRoll, player);  
+    }
+    
+}

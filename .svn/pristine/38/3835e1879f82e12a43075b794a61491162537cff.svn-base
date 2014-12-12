@@ -1,0 +1,203 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Controller;
+
+import Display.BoardDisplay;
+import Model.*;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author chris
+ */
+public class ActionManager {
+    
+    private static ActionManager instance = null;
+    private BoardDisplay display = BoardDisplay.getInstance();
+    private Board board = Board.getInstance();
+    private boolean gameFinished = false;
+    private Game game;
+    
+    protected ActionManager() {
+        addPropertiesToBoardDisplay();
+        ArrayList<Player> players = new ArrayList();
+        players.add(new Player(0));
+        players.add(new Player(1));
+        players.add(new Player(2));
+        game = Game.getInstance(players);
+        addPlayers();
+    }
+ 
+    /**
+    * Returns an instance of the singleton class ActionManager
+    * @return ActionManager instance
+    */
+    public static ActionManager getInstance() {
+        if (instance == null) {
+            instance = new ActionManager();
+        }
+        return instance;
+    }
+    
+    private void addPropertiesToBoardDisplay() {
+        int counter = 0;
+        for (Space space : board) {
+            display.addSpaceToDisplay(counter,space.getName());
+            counter++;
+        }
+        display.revalidate();
+    }
+    
+    private void addPlayers() {
+        for (Player player : game.getPlayers()) {
+            display.addPlayerMarker(player.getToken(), 0);
+            //Puts the player at go.
+            player.setSpace(board.get(0));       
+        }
+        game.givePlayersStartingMoney();
+        display.revalidate();
+    }
+    
+    public void startGame() {
+        while (!gameFinished) {
+            Player player = game.nextPlayer();
+            Object[] options = {"Roll", "Buy houses"};
+            int n = JOptionPane.showOptionDialog(display,
+                "Roll Dice?",
+                "Roll Dice",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]);
+            if (n == 1) {
+                showHouseBuyingOptions(player);
+            }
+            rollDiceToMove(player);
+        }
+    }
+    
+    /**
+     * Performs the appropriate actions for a players turn.
+     */
+    private void rollDiceToMove(Player player) {  
+        int diceRoll = player.rollForTurn();
+        int newSpace = game.movePlayer(player, diceRoll);
+        display.movePlayer(player.getToken(), newSpace);
+        display.updateStatPanel(player.getToken(), player.getMoney());
+        handleProperty(player, newSpace, diceRoll);     
+    }
+    
+    
+    private void handleProperty(Player player, int newSpace, int diceRoll) {
+        Space landedOn = board.get(newSpace);  
+        String message = null;
+        
+        if (landedOn.getOwner() != null) {
+            //Somebody owns it. May have to pay rent.
+            int rent = landedOn.getRent(diceRoll);
+            changePlayerMoney(landedOn.getOwner(), rent);
+            changePlayerMoney(player, -rent);
+            message = "You paid p" + landedOn.getOwner().getToken() + " " + rent;
+        } else {
+            //Card square.
+            if (landedOn.getClass().equals(CardSpace.class)) {
+                CardSpace cardSpace = (CardSpace)landedOn;
+                if (cardSpace.isCommChest()) {
+                    message = game.drawFromCommunityChest(player);
+                } else {
+                    message = game.drawFromChance(player);
+                }
+            } else {
+                //Can buy property
+               int response = JOptionPane.showConfirmDialog(display,"Do you want to buy: "
+                       + player.getCurrentSpace().getName() + "?" , 
+                       "Buy Property", JOptionPane.YES_NO_OPTION);
+               if (response == JOptionPane.YES_OPTION) {
+                   if(buyPropertyPlayer(player, landedOn)) {
+                       message = "You bought " + landedOn.getName()
+                               + " for " + landedOn.getIntialCost(); 
+                   } else {
+                       message = "You can't afford " + landedOn.getName();
+                   }
+               }
+            }       
+        }
+        display.movePlayer(player.getToken(), player.getCurrentSpace().getSpaceNumber());
+        display.updateStatPanel(player.getToken(), player.getMoney());
+        JOptionPane.showMessageDialog(display,player.getToken()+": "+message);
+        
+    }
+    
+    /**
+     * Lets the player by the property if they have enough money.
+     * @param player buying the property.
+     * @param property to buy
+     * @return true if the player has enough money to successfully buy the property.
+     */
+    private boolean buyPropertyPlayer(Player player, Space property) {
+        int cost = property.getIntialCost();
+        if (player.getMoney() >= cost) {
+            changePlayerMoney(player, -cost);
+            property.setOwner(player);
+            return true;
+        } else {
+            return false;
+        }
+    }
+   
+    
+    /**
+     * Changes the player's money by an amount and updates the display.
+     * @param p
+     * @param money 
+     */
+    private void changePlayerMoney(Player p, int money) {
+        p.changeMoney(money);
+        display.updateStatPanel(p.getToken(), p.getMoney());
+        
+    }
+    
+    /**
+     * Shows the house buying options for the current player.
+     */
+    private void showHouseBuyingOptions(Player player) {
+        ArrayList<String> siteNames = new ArrayList();
+        for (Space sites : player.getSites()) {
+            siteNames.add(sites.getName());
+        }
+        int siteNumber = display.chooseProperty(siteNames);
+        //Returns the site number selected.
+        if (siteNumber >= 0) {
+            Site site = player.getSites().get(siteNumber);
+            String title = "";
+            String message = "";
+            switch (site.addHouse()) {
+                case Site.HOUSE_ADDED :
+                    message = "Added house to " + site.getName() +
+                    ". This now has " + site.getHouses();
+                    title = "Added house";
+                    break;
+                case Site.TOO_MANY_HOUSES : 
+                    message = "You've already got a hotel"
+                        + " on this property";
+                    title = "Already have a hotel";
+                    break;
+                case Site.MUST_BUY_HOUSES_ON_OTHER_PROPERTIES :
+                    message = "You must buy houses on other properties first";
+                    title = "Buy houses elsewhere first.";
+                    break;
+            }
+            display.messageUserWithInfo(message,title);
+            
+        } else { // Happens if there are no properties avaliable and
+                 // -1 is returned from sitenumber.
+            display.messageUserWithInfo("Not enough properties",
+                                        "Not enough properties");
+        }    
+    }
+    
+}

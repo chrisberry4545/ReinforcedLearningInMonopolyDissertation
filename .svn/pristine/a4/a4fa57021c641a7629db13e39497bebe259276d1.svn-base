@@ -1,0 +1,46 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Players.FirstTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Evaluator;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.NeuralNetwork.Critic;
+
+/**
+ *
+ * @author chris
+ */
+public class Main {
+    
+    private static final String FILE_TO_LOAD = "first_try";
+    private static final String FILE_NAME_TO_SAVE_TO = FILE_TO_LOAD;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        double lambda = 0.5;
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, FirstTDPlayer.NUM_INPUT_NODES, 
+                FirstTDPlayer.NUM_HIDDEN_NODES, 
+                FirstTDPlayer.NUM_OUTPUT_NODES);
+        evaluator.loadNet(FILE_TO_LOAD);
+        
+        //Network needs to be reset so nodes created first know about their
+        //output nodes created later.
+        evaluator.restartNetwork();
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer);
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < 1; i++) {
+            am.startNewGame(critic);
+            System.out.println("On run :" + i);
+            
+        }
+        evaluator.saveNet(FILE_NAME_TO_SAVE_TO);
+    }
+}

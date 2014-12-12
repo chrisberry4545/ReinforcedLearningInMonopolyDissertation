@@ -1,0 +1,75 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Spaces.Space;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.util.List;
+import javax.swing.*;
+import java.awt.Color;
+
+/**
+ *
+ * @author Chris
+ */
+public abstract class ActionFrame extends JFrame {
+    
+    private boolean disposed = false;
+    private Space propertySelected = null;
+    protected static final Color topBarColor = new Color(195,195,195);
+    
+    
+    public ActionFrame(List<? extends Space> spaces) {
+        this.getContentPane().setLayout(new BoxLayout(this.getContentPane(),
+                BoxLayout.Y_AXIS));
+        
+        this.getContentPane().add(setUpMainPanel(spaces));
+        
+  
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        this.pack();
+        this.setLocationRelativeTo(null);
+        this.setVisible(true);
+    }
+    
+    public abstract JPanel setUpMainPanel(List<? extends Space> spaces);
+    
+    public JButton createCancelButton() {
+        JButton cancelButton = new JButton();
+        final JFrame frame = this;
+        cancelButton.setAction(new AbstractAction("Cancel") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                frame.dispose();
+            }
+        });;
+        return cancelButton;
+    }
+    
+    @Override
+    public void dispose() {
+        this.disposed = true;
+        super.dispose();
+    }
+    
+    public void setPropertySelected(Space space) {
+        propertySelected = space;
+    }
+    
+    public Space getPropertySelected() {
+        return propertySelected;
+    }
+    
+    public boolean isDisposed() {
+        return this.disposed;
+    }
+
+    
+}

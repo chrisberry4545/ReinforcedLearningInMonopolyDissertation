@@ -1,0 +1,244 @@
+package Model.Players.AIControllers;
+
+import Model.Board;
+import Model.DealOffer;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.Player;
+import Model.Players.TDInputGenerators.TDInputGenerator;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.Map;
+
+/**
+ * A version of AIControllerV3 with the optimal modes selected. The AI
+ * can also use the bot or the TD Player to select what to do in the individual
+ * steps that happen in the course of a normal turn.
+ * @author Chris Berry
+ */
+public class AIControllerV3_2 extends AIControllerV3{
+        
+    private boolean botHandlesMortgageDecisions = true;
+    private boolean botHandlesHouseBuyingDecisions = true;
+    private boolean botHandlesUnMortgageDecisions = true;
+    private boolean botHandlesDealMakingDecisions = true;
+    //Note selling houses isn't included as I believe except in a very small
+    //amount of cirmumstances this is a bad idea.
+    
+    
+    private final int roundsBeforeStayInJail = 40;
+    private final int wontPayToLeaveJailMoney = 200;
+    
+    public static final int MAX_MODE_NUM = 4;
+    
+    /**
+     * Creates a new AIControllerV3_2
+     * @param tokenNumber player number to use.
+     * @param critic to use.
+     * @param inputGen to use.
+     * @param board which the player will be playing on.
+     */
+    public AIControllerV3_2(int tokenNumber, Critic critic, 
+            TDInputGenerator inputGen, Board board) {
+        super(tokenNumber, critic, inputGen, board);
+        super.setBotDecidesToBuyProperties(false);
+        super.setBotHandlesInJailOptions(false);
+        super.setBotHandlesNormalMove(true);
+        super.setBotAssessesOffers(false);
+        super.setBotMakesBids(true);
+        super.setBotHandlesReceiveingProperty(true);
+        super.setBotChoosesPropertyForBuildingOn(false);
+        super.setBotHandlesMortgagingProperties(false);
+        super.setBotHandlesSellingHouses(false);
+    }
+    
+    /**
+     * The bot handles this decision if the mode is selected, otherwise
+     * it is handled in a similar way to how the TD player would handle it.
+     */
+    public void checkIfShouldMortgageProperties() {
+        if (botHandlesMortgageDecisions) {
+            bot.checkIfShouldMortgageProperties();
+        } else {
+            double currentResults 
+                    = tdPlayer.getMoveEvaluator().getCurrentResults(this.getNumber());
+            Map.Entry<Double, Space> mostWorthMortgaging 
+                    = tdPlayer.getMoveEvaluator().getPropertyMostWorthMortgaging();
+            if (mostWorthMortgaging != null
+                    && currentResults < mostWorthMortgaging.getKey()) {
+                this.mortgageProperty(mostWorthMortgaging.getValue());
+                //Checks if any other properties should be mortgaged.
+                this.checkIfShouldMortgageProperties();
+            }
+        }
+    }
+    
+    /**
+     * The bot handles this decision if the mode is selected, otherwise
+     * it is handled in a similar way to how the TD player would handle it.
+     */
+    public void checkIfShouldBuyHouses() {
+        if (botHandlesHouseBuyingDecisions) {
+            bot.checkIfShouldBuyHouses();
+        } else {
+            double currentResults 
+                    = tdPlayer.getMoveEvaluator().getCurrentResults(this.getNumber());
+            Map.Entry<Double, Site> spaceMostWorthBuyingHousesOn
+                    = tdPlayer.getMoveEvaluator().getPropertyMostWorthBuyingHouseOn(this);
+            if (spaceMostWorthBuyingHousesOn != null &&
+                    currentResults < spaceMostWorthBuyingHousesOn.getKey()) {
+                spaceMostWorthBuyingHousesOn.getValue().addHouse();
+                //Check if any other properties should have houses built.
+                this.checkIfShouldBuyHouses();
+            }
+        }
+    }
+    
+    /**
+     * The bot handles this decision if the mode is selected, otherwise
+     * it is handled in a similar way to how the TD player would handle it.
+     */
+    public void checkIfShouldUnMortgageProperties() {
+        if (botHandlesUnMortgageDecisions) {
+            bot.checkIfShouldUnMortgageProperties();
+        } else {
+            double currentResults 
+                    = tdPlayer.getMoveEvaluator().getCurrentResults(this.getNumber());
+            Map.Entry<Double, Space> spaceMostWorthUnmortgaging =
+                    tdPlayer.getMoveEvaluator().getPropertyMostWorthUnMortgaging();
+            if (spaceMostWorthUnmortgaging != null &&
+                    currentResults < spaceMostWorthUnmortgaging.getKey()) { 
+                if (this.getMoney() > spaceMostWorthUnmortgaging.getValue().getRebuyRate()) {
+                    this.unmortgageProperty(spaceMostWorthUnmortgaging.getValue());
+                    //Checks there aren'y any other properties that are worth unmortgaging.
+                    this.checkIfShouldUnMortgageProperties();
+                }
+            }
+        }
+    }
+    
+    /**
+     * The bot handles this decision if the mode is selected, otherwise
+     * it is handled in a similar way to how the TD player would handle it.
+     */
+    public void checkIfDealShouldBeMade() {
+        if (botHandlesDealMakingDecisions) {
+            bot.checkIfShouldMortgageProperties();
+        } else {
+            double currentResult 
+                    = tdPlayer.getMoveEvaluator().getCurrentResults(this.getNumber());
+            Map.Entry<Double, Map.Entry<Player, DealOffer> > offerMostWorthMaking
+                    = tdPlayer.getMoveEvaluator().getOfferMostWorthMaking();
+            if (offerMostWorthMaking != null &&
+                    currentResult < offerMostWorthMaking.getKey()) {
+                tdPlayer.makeAnOfferToAnotherPlayer(
+                        offerMostWorthMaking.getValue().getValue(),
+                        offerMostWorthMaking.getValue().getKey());
+            }
+        }
+    }
+     
+    /**
+     * The structure of the in Jail options are the same as that for the SmartBot.
+     * @return the players choice code.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        this.checkIfShouldMortgageProperties();
+        this.checkIfShouldBuyHouses();
+        this.checkIfShouldUnMortgageProperties();
+        this.checkIfDealShouldBeMade();
+        if (Game.getInstance().getRoundCount() > roundsBeforeStayInJail
+                || this.getMoney() < wontPayToLeaveJailMoney) {
+            int diceRoll = this.rollToLeaveJail();
+            //Returns -1 if a double isn't rolled.
+            if (diceRoll == -1) {
+                //Turn finishes in this case.
+                return Player.STILL_IN_JAIL_TURN_OVER;
+            } else {
+                return diceRoll;
+            }
+        }
+        
+        if (this.payToLeaveJail()) {
+            return Player.rollDice();
+        } else {
+            System.err.println("AI trying to pay to leave jail when it can't"
+                    + "afford to.");
+            return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+        }    
+    }
+
+    /**
+     * The structure for the move options are the same as for the SmartBot.
+     * @return true if the player's turn is finished.
+     */
+    @Override
+    public boolean askPlayerMoveOptions() {
+        this.checkIfShouldMortgageProperties();
+        this.checkIfShouldBuyHouses();
+        this.checkIfShouldUnMortgageProperties();
+        this.checkIfDealShouldBeMade();
+        return true;
+    }
+    
+    /**
+     * Sets the mode to use, in each mode the bot takes over a different 
+     * function.
+     * @param mode to use. 
+     */
+    @Override
+    public void setMode(int mode) {
+        switch (mode) {
+            case 0 :
+                break;
+            case 1 :
+                setBotHandlesMortgageDecisions(false);
+                break;
+            case 2 :
+                setBotHandlesHouseBuyingDecisions(false);
+                break;
+            case 3 :
+                setBotHandlesUnMortgageDecisions(false);
+                break;
+            case 4 :
+                setBotHandlesDealMakingDecisions(false);
+                break;
+        }
+    }
+    
+
+    /**
+     * Sets the bot to handle mortgage decisions.
+     * @param botHandlesMortgageDecisions 
+     */
+    public void setBotHandlesMortgageDecisions(boolean botHandlesMortgageDecisions) {
+        this.botHandlesMortgageDecisions = botHandlesMortgageDecisions;
+    }
+
+    /**
+     * Sets the bot to handle house buying decisions.
+     * @param botHandlesHouseBuyingDecisions 
+     */
+    public void setBotHandlesHouseBuyingDecisions(boolean botHandlesHouseBuyingDecisions) {
+        this.botHandlesHouseBuyingDecisions = botHandlesHouseBuyingDecisions;
+    }
+
+    /**
+     * Sets the bot to handle unmortgaging decisions.
+     * @param botHandlesUnMortgageDecisions 
+     */
+    public void setBotHandlesUnMortgageDecisions(boolean botHandlesUnMortgageDecisions) {
+        this.botHandlesUnMortgageDecisions = botHandlesUnMortgageDecisions;
+    }
+
+    /**
+     * Sets the bot to handle deal making decisions.
+     * @param botHandlesDealMakingDecisions 
+     */
+    public void setBotHandlesDealMakingDecisions(boolean botHandlesDealMakingDecisions) {
+        this.botHandlesDealMakingDecisions = botHandlesDealMakingDecisions;
+    }
+    
+    
+}

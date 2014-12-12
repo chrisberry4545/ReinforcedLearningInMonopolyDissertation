@@ -1,0 +1,153 @@
+package Model.Players;
+
+import Model.Board;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.List;
+
+/**
+ * The first attempt at creating a TD player. This is now retired but I have
+ * kept it as a record of how I started.
+ * @author Chris Berry
+ */
+public class FirstTDPlayer extends AbstractTDPlayer {
+    
+    public static final int NUM_INPUT_NODES = 101;
+    public static final int NUM_OUTPUT_NODES = 12;
+    public static final int NUM_HIDDEN_NODES = 25;
+    
+    /**
+     * This value gets returned from evaluators functions if the player cannot
+     * make this move. It is filled with highly negative values so the AI
+     * will not play these choices.
+     * These need to be changed if the outputs are changed.
+     */
+    private double[] badOutput = {
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo};
+    
+    /**
+     * Creates a TD player.
+     * @param setPlayerNumber sets the player number of the player.
+     * @param currentBoard the board the player will be playing on.
+     * @param critic the critic used in the player's neural network.
+     */
+    public FirstTDPlayer(int setPlayerNumber, Board currentBoard,
+            Critic critic) {
+        super(setPlayerNumber,currentBoard,critic);
+    }
+    
+/**
+ * Overriding methods.
+ */    
+     /**
+     * Gets an array representing the current inputs for the neural network
+     * based on the current state of the board.
+     * @return 
+     */
+    @Override
+    public double[] getCurrentInputs() {
+        double[] inputs = new double[NUM_INPUT_NODES];
+        int inputNumber = 0;
+        //Add the nodes for the other players.
+        //There will always be 6 nodes for this.
+        List<Player> allPlayers = Game.getInstance().getPlayers();
+        for (int i = 0; i < 6; i++) {
+            if (allPlayers.size() > i) {
+                inputs[inputNumber]
+                        = allPlayers.get(i).getMoney()/1000;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //22 nodes representing properties.
+        for (Site site: board.getAllSites()) {
+            //Adds values for the color.
+            inputs[inputNumber] = site.getColorNumber()/7;
+            inputNumber++;
+            //Adds values for owner.
+            if (site.getOwner() != null) {
+                inputs[inputNumber] =
+                    site.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+            //Adds value for number of houses.
+            inputs[inputNumber] = site.getHouses()/Site.MAX_HOUSES;
+            inputNumber++;
+        }
+        //4 nodes representing stations.
+        for (Station station : board.getAllStations()) {
+            if (station.getOwner() != null) {
+                inputs[inputNumber] =
+                        station.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //2 nodes representing utilies.
+        for (Utility utility : board.getAllUtilities()) {
+            if (utility.getOwner() != null) {
+                inputs[inputNumber] =
+                        utility.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //1 node representing whether the player is in jail or not.
+        if (!this.inJail()) {
+            inputs[inputNumber] = 0;
+        } else {
+            inputs[inputNumber] = 1;
+        }
+        return inputs;
+    }
+    
+/**
+ * Getter Methods.
+ */    
+     /**
+     * Gets the number of input nodes used by the player.
+     * @return 
+     */
+    @Override
+    public int getNumInputNodes() {
+        return NUM_INPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of output nodes used by the player.
+     * @return 
+     */
+    @Override
+    public int getNumOutputNodes() {
+        return NUM_OUTPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of hidden nodes used by the player.
+     * @return 
+     */
+    @Override
+    public int getNumHiddenNodes() {
+        return NUM_HIDDEN_NODES;
+    }
+    
+    /**
+     * Gets the bad output array used by the player.
+     * @return 
+     */
+    @Override
+    public double[] getBadOutputArray() {
+        return badOutput;
+    }
+}

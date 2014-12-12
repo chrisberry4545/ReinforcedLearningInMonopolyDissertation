@@ -1,0 +1,78 @@
+package Model;
+
+import Model.Spaces.Space;
+import java.util.*;
+
+/**
+ *
+ * @author chris
+ */
+public class DealOffer {
+    
+    private List<Space> offeredProperty;
+    private List<Space> requestedProperty;
+    private int offeredCash;
+    private int requestedCash;
+    private int offeredGetOutOfJailCards;
+    private int requestedGetOutOfJailCards;
+    
+    
+    public DealOffer() {
+        offeredProperty = new ArrayList();
+        requestedProperty = new ArrayList();
+        offeredCash = 0;
+        requestedCash = 0;
+        offeredGetOutOfJailCards = 0;
+        requestedGetOutOfJailCards = 0;
+    }
+    
+    public List<Space> getOfferedProperties() {
+        return offeredProperty;
+    }
+    
+    public List<Space> getRequestedProperties() {
+        return requestedProperty;
+    }
+    
+    public int getOfferedCash() {
+        return offeredCash;
+    }
+    
+    public int getRequestedCash() {
+        return requestedCash;
+    }
+    
+    public int getOfferedGetOutOfJailCards() {
+        return offeredGetOutOfJailCards;
+    }
+    
+    public int getRequestedGetOutOfJailCards() {
+        return requestedGetOutOfJailCards;
+    }
+    
+    public void addPropertyToOffer(Space property) {
+        offeredProperty.add(property);
+    }
+    
+    public void addPropertyToRequest(Space property) {
+        requestedProperty.add(property);
+    }
+    
+    public void offerCash(int amount) {
+        offeredCash += amount;
+    }
+    
+    public void requestCash(int amount) {
+        requestedCash -= amount;
+    }
+    
+    public void offerGetOutOfJailCards(int amount) {
+        offeredGetOutOfJailCards += amount;
+    }
+    
+    public void requestGetOutOfJailCards(int amount) {
+        requestedGetOutOfJailCards -= amount;
+    }
+    
+    
+}

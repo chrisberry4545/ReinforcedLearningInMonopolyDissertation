@@ -1,0 +1,75 @@
+package Model;
+
+import java.util.*;
+
+/**
+ * Stores information about the current state of the game.
+ * @author chris
+ */
+public class Game {
+    
+    private int turnCounter = 0;
+    private int currentPlayerIndex;
+    private List<Player> allPlayers;
+    private Deck chanceCards;
+    private Deck communityChest;
+    private Board board;
+    private boolean gameFinished = false;
+    
+    public static final int playerStartingMoney = 1500;
+    public static final int passGoMoney = 200;
+    
+    public Game(List<Player> players) {
+        this.allPlayers = players;
+        board = board.getInstance();
+    }
+    
+    /**
+     * Gives all players their starting money.
+     */
+    public void givePlayersStartingMoney() {
+        for (Player player :allPlayers) {
+            player.changeMoney(playerStartingMoney);
+        }
+    }
+    
+    private void intialiseCommunityChest() {
+        
+    }
+    
+    private void intialiseChanceCards() {
+        
+    }
+    
+    public void movePlayer() {
+        
+    }
+    
+    /**
+     * Returns the player whos turn is next and moves the player and 
+     * turn counter along.
+     * @return Player whos turn is next.
+     */
+    public Player nextPlayer() {
+        if (currentPlayerIndex < allPlayers.size() - 1) {
+            currentPlayerIndex++;
+        } else {
+            currentPlayerIndex = 0;
+        }
+        turnCounter++;
+        return getCurrentPlayer();
+    }
+    
+    public List<Player> getPlayers() {
+        return allPlayers;
+    }
+    
+    public boolean gameFinished() {
+        return gameFinished;
+    }
+    
+    public Player getCurrentPlayer() {
+        return allPlayers.get(currentPlayerIndex);
+    }
+    
+}

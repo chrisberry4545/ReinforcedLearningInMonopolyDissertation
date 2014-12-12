@@ -1,0 +1,430 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Board;
+import Model.Game;
+import Model.GameStats;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.TDInputGenerator;
+import Model.Players.*;
+import Model.Players.ThirdTDPlayer;
+import java.io.BufferedWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import Model.Spaces.Space;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+
+/**
+ *
+ * @author Chris
+ */
+public class ELOGauntlet {
+    
+    public static void ELOGauntlet2Players(String playersFile, 
+            TDInputGenerator playersInputGen, int numOutputs) {
+        
+        System.out.println("Running ELO Tests..");
+        int gamesToPlay = 250;
+        
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        /**
+         * Vs random AI.
+         */
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 1;
+        int numFullTDPlayers = 1;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        int numSmartBots = 0;
+        int numAIController = 0;
+        
+        GameStats.setUpGameStats(numHumanPlayers + numRandomPlayers + numFullTDPlayers
+                + numSimpleTDAIs + numDBGenRandomAIs);
+        
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(playersCritic, playersInputGen, false,
+                                    numHumanPlayers, numRandomPlayers,
+                                numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                                numSmartBots, numAIController,
+                                useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+        }
+        int winsVRandom = am.getP1Victories();
+        double percWinRandom = (double)winsVRandom/gamesToPlay;
+        am.resetVictories();
+        
+        /**
+         * Vs TD AI V3 5,000 self plays.
+         */
+        int tdAIV3Outputs = 1;
+        String tdAIV3_5K = "June-19-2013-lambda0-9-runs5000";
+        
+        int winsVTDAI5K = run2PlayerTestForTDAI(tdAIV3_5K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numAIController);
+        double percWinTDAI5K = (double)winsVTDAI5K/gamesToPlay;
+        
+        
+        /**
+         * Vs TD AI V3 20,000 self plays.
+         */
+        String tdAIV3_20K = "June-19-2013-lambda0-9-runs20000";
+        
+        int winsVTDAI20K = run2PlayerTestForTDAI(tdAIV3_20K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numAIController);
+        double percWinTDAI20K = (double)winsVTDAI20K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V3 40,000 self plays.
+         */
+        String tdAIV3_40K = "June-19-2013-lambda0-9-runs40000";
+        
+        int winsVTDAI40K = run2PlayerTestForTDAI(tdAIV3_40K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numAIController);
+        double percWinTDAI40K = (double)winsVTDAI40K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V3 100,000
+         */
+        String tdAIV3_100K = "June-19-2013-lambda0-9-runs100000";
+        
+        int winsVTDAI100K = run2PlayerTestForTDAI(tdAIV3_100K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numAIController); 
+        double percWinTDAI100K = (double)winsVTDAI100K/gamesToPlay;
+        
+        /**
+         * Vs TD Lambda0 V3.1 40,000
+         */
+        String tdAIV3_1_40K = "June-27-2013-lambda0-runs40000";
+        
+        int winsVTDAILamda0_40K = run2PlayerTestForTDAI(tdAIV3_1_40K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numAIController); 
+        double percWinTDAILambda0_40K = (double)winsVTDAILamda0_40K/gamesToPlay;
+        
+        
+        GameStats.writeToCSV("GameStats.csv", GameStats.getCSVString());
+        GameStats.writeToCSV("OfferedDeals.csv", GameStats.getOfferedDealCSVString());
+        GameStats.writeToCSV("AcceptedDeals.csv", GameStats.getCompletedDealCSVString());
+        
+        System.out.println("Max money: " + ActionManager.getMaxMoney());
+        GameStats.printHighestWinValue();
+        
+        
+        System.out.println("Results for " + playersFile);
+        System.out.println("Wins vs Random AI: " + winsVRandom 
+                + " ("  + percWinRandom + "%)");
+        System.out.println("Wins vs TD V3 5,000: " + winsVTDAI5K 
+                + " (" + percWinTDAI5K + "%)");
+        System.out.println("Wins vs TD V3 20,000: " + winsVTDAI20K 
+                + " (" + percWinTDAI20K + "%)");
+        System.out.println("Wins vs TD V3 40,000: " + winsVTDAI40K
+                + " (" + percWinTDAI40K + "%)");
+        System.out.println("Wins vs TD V3 100,000: " + winsVTDAI100K 
+                + " (" + percWinTDAI100K + "%)");
+        System.out.println("Wins vs TD V3.1 40,000: " + winsVTDAILamda0_40K
+                + " (" + percWinTDAILambda0_40K + "%)");
+    }
+    
+    public static int run2PlayerTestForTDAI(String fileName, int outputNodes,
+            Critic playersCritic, TDInputGenerator playersInputGen,
+            int gamesToPlay, int numAIController) {
+        AbstractEvaluator otherPlayerEval = new AbstractEvaluator(fileName);
+        Generalizer otherPlayerGen = new Generalizer(otherPlayerEval);
+        Critic otherPlayerCritic = new Critic(otherPlayerGen, outputNodes);
+        otherPlayerCritic.setBlockLearning(true);
+        List<Critic> criticList = new ArrayList();
+        criticList.add(playersCritic);
+        criticList.add(otherPlayerCritic);
+        List<TDInputGenerator> inputGenList = new ArrayList();
+        ThirdTDPlayer v3InputGen = new ThirdTDPlayer();
+        inputGenList.add(playersInputGen);
+        inputGenList.add(v3InputGen);
+        
+        int winsVOtherAI = runGames(gamesToPlay, criticList, inputGenList, 2, numAIController);
+        ActionManager.getInstance().resetVictories();
+        return winsVOtherAI;
+    }
+    
+    public static int runGames(int gamesToPlay, List<Critic> criticList,
+            List<TDInputGenerator> inputGenList, int numTDPlayers, int numAIControllerPlayers) {
+        ActionManager am = ActionManager.getInstance();
+        
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 0;
+        int numFullTDPlayers = numTDPlayers;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        int numSmartBots = 0;
+        int numAIController = numAIControllerPlayers;
+        
+        boolean useExploratoryMoves = false;
+        
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(criticList,inputGenList, false,
+                                numHumanPlayers, numRandomPlayers,
+                            numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                            numSmartBots, numAIController,
+                            useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+        }
+        
+        
+        return am.getP0Victories() + am.getP1Victories();
+    }
+    
+    public static void ELOGauntlet4PlayersStandard(String playersFile,
+            TDInputGenerator playersInputGen, int numOutputs) {
+        boolean playerIsAIController = false;
+        ELOGauntlet.ELOGauntlet4Players(playersFile, playersInputGen,
+                numOutputs, playerIsAIController);
+    }
+    
+    public static void ELOGauntlet4PlayerWithAIController(String playersFile,
+            TDInputGenerator playersInputGen, int numOutputs) {
+        boolean playerIsAIController = true;
+        ELOGauntlet.ELOGauntlet4Players(playersFile, playersInputGen,
+                numOutputs, playerIsAIController);
+    }
+    
+    public static void ELOGauntlet4Players(String playersFile, 
+            TDInputGenerator playersInputGen, int numOutputs,
+            boolean playerIsAIController) {
+        System.out.println("Running 4 Player ELO Tests..");
+        int gamesToPlay = 100;
+        File file = new File("");
+        String dirPath = file.getAbsolutePath() + File.separatorChar 
+                + "ELOGauntletAIs" + File.separatorChar;
+        
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        /**
+         * Vs random AI.
+         */
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 2;
+        int numFullTDPlayers = 0;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        int numSmartBots = 0;
+        int numAIController = 0;
+        
+        if (!playerIsAIController) {
+            numFullTDPlayers = 2;
+        } else {
+            numAIController = 2;
+        }
+        
+        GameStats.setUpGameStats(numHumanPlayers + numRandomPlayers + numFullTDPlayers
+                + numSimpleTDAIs + numDBGenRandomAIs + numSmartBots + numAIController);
+        
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(playersCritic, playersInputGen, false,
+                                    numHumanPlayers, numRandomPlayers,
+                                numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                                numSmartBots, numAIController,
+                                useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+        }
+        int winsVRandom = am.getP2Victories() + am.getP3Victories();
+        double percWinRandom = (double)winsVRandom/gamesToPlay;
+        am.resetVictories();
+        
+        if (!playerIsAIController) {
+            numFullTDPlayers = 4;
+        }
+        
+        /**
+         * Vs TD AI V5 5,000 Money divided by 7500, Monopoly starts 50%.
+         */
+        int tdAIV5Outputs = 1;
+        String tdAIV5_5K = "July-14-2013-4PlayerMoneyDiv7500MonopolyStarts-runs5000";
+        TDInputGenerator otherPlayerGen = new FourthTDPlayerVer3();
+        
+        int winsVTDAI5K = runTestForTDAIs(dirPath + tdAIV5_5K, tdAIV5Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numFullTDPlayers, otherPlayerGen, numAIController);
+        double percWinTDAI5K = (double)winsVTDAI5K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V5.1 5,000 DB Leaner Money divided by 7500, Monopoly starts 50%.
+         */
+        String tdAIV5_1_5K = "July-15-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart-runs5000";
+        otherPlayerGen = new FourthTDPlayerVer3();
+        
+        int winsVTDAI5_1_5K = runTestForTDAIs(dirPath + tdAIV5_1_5K, tdAIV5Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numFullTDPlayers, otherPlayerGen, numAIController);
+        double percWinTDAI5_1_5K = (double)winsVTDAI5_1_5K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V5.1 5,000 DB Leaner Money divided by 7500, Monopoly starts 50%.
+         */
+        String tdAIV5_32_5K = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart80Hidden-runs5000";
+        otherPlayerGen = new FifthTDPlayerVer32(false);
+        
+        int winsVTDAI5_32_5K = runTestForTDAIs(dirPath + tdAIV5_32_5K, tdAIV5Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numFullTDPlayers, otherPlayerGen, numAIController);
+        double percWinTDAI5_32_5K = (double)winsVTDAI5_32_5K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V5.1 5,000 DB Leaner Money divided by 7500, Monopoly starts 50%.
+         */
+        String tdAIV5_36_5K = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart160Hidden-runs5000";
+        otherPlayerGen = new FifthTDPlayerVer36(false);
+        
+        int winsVTDAI5_36_5K = runTestForTDAIs(dirPath + tdAIV5_36_5K, tdAIV5Outputs, playersCritic,
+                playersInputGen, gamesToPlay, numFullTDPlayers, otherPlayerGen, numAIController);
+        double percWinTDAI5_36_5K = (double)winsVTDAI5_36_5K/gamesToPlay;
+        
+        System.out.println("Max money: " + ActionManager.getMaxMoney());
+        GameStats.printHighestWinValue();
+        
+        
+        System.out.println("Results for " + playersFile);
+        System.out.println("Wins vs Random AI: " + winsVRandom 
+                + " ("  + percWinRandom + "%)");
+        System.out.println("Wins vs TD V5: " + winsVTDAI5K
+                + " ("  + percWinTDAI5K + "%)");
+        System.out.println("Wins vs TD V5.1: " + winsVTDAI5_1_5K
+                + " ("  + percWinTDAI5_1_5K + "%)");
+        System.out.println("Wins vs TD V5.32: " + winsVTDAI5_32_5K
+                + " (" + percWinTDAI5_32_5K + "%");
+        System.out.println("Wins vs TD V5.36: " + winsVTDAI5_36_5K
+                + " (" + percWinTDAI5_36_5K + "%");
+        
+        try {
+            FileWriter fw = new FileWriter(playersFile + "ELOResults.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write("Results for " + playersFile);
+            bw.newLine();
+            bw.write("Wins vs Random AI: " + winsVRandom 
+                + " ("  + percWinRandom + "%)");
+            bw.newLine();
+            bw.write("Wins vs TD V5: " + winsVTDAI5K
+                + " ("  + percWinTDAI5K + "%)");
+            bw.newLine();
+            bw.write("Wins vs TD V5.1: " + winsVTDAI5_1_5K
+                + " ("  + percWinTDAI5_1_5K + "%)");
+            bw.newLine();
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+        
+    }
+    
+    private static int runTestForTDAIs(String otherPlayerFile, int outputNodes,
+            Critic playersCritic, TDInputGenerator playersInputGen, int gamesToPlay,
+            int numTDPlayers, TDInputGenerator otherPlayersInputGen, int numAIControllerPlayers) {
+        AbstractEvaluator otherPlayerEval = new AbstractEvaluator(otherPlayerFile);
+        Generalizer otherPlayerGen = new Generalizer(otherPlayerEval);
+        Critic otherPlayerCritic = new Critic(otherPlayerGen, outputNodes);
+        otherPlayerCritic.setBlockLearning(true);
+        List<Critic> criticList = new ArrayList();
+        criticList.add(playersCritic);
+        criticList.add(playersCritic);
+        List<TDInputGenerator> inputGenList = new ArrayList();
+        inputGenList.add(playersInputGen);
+        inputGenList.add(playersInputGen);
+        
+        int numTDPlayersToCreate = numTDPlayers - 2 + numAIControllerPlayers;
+        for (int i = 0; i < numTDPlayersToCreate; i++) {
+            criticList.add(otherPlayerCritic);
+            inputGenList.add(otherPlayersInputGen);
+        }
+        int winsVOtherAI = runGames(gamesToPlay, criticList, inputGenList, numTDPlayers,
+                numAIControllerPlayers);
+        ActionManager.getInstance().resetVictories();
+        return winsVOtherAI;
+    }
+    
+    
+    public static void ELOTest4Players(String playersFile, 
+            TDInputGenerator playersInputGen, int numOutputs) {
+        System.out.println("Running 4 Player ELO Tests..");
+        int gamesToPlay = 100;
+        File file = new File("");
+        String dirPath = file.getAbsolutePath() + File.separatorChar 
+                + "ELOGauntletAIs" + File.separatorChar;
+        
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        
+        /**
+         * Vs TD AI V5.1 5,000 DB Leaner Money divided by 7500, Monopoly starts 50%.
+         */
+        String tdAIV5_32_5K = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart80Hidden-runs5000";
+        TDInputGenerator otherPlayerGen = new FifthTDPlayerVer32(false);
+        
+        int winsVTDAI5_32_5K = runTestForTDAIs(dirPath + tdAIV5_32_5K, 1, playersCritic,
+                playersInputGen, gamesToPlay, 4, otherPlayerGen, 0);
+        double percWinTDAI5_32_5K = (double)winsVTDAI5_32_5K/gamesToPlay;
+        
+        
+        System.out.println("Max money: " + ActionManager.getMaxMoney());
+        GameStats.printHighestWinValue();
+        
+        
+        System.out.println("Results for " + playersFile);
+        System.out.println("Wins vs TD V5.32: " + winsVTDAI5_32_5K
+                + " (" + percWinTDAI5_32_5K + "%");
+       
+    }
+    
+        
+    public static void TestVsBot1(String playersFile, TDInputGenerator playersInputGen,
+            int numOutputs) {
+        System.out.println("Running tests vs Bot");
+        int gamesToPlay = 100;
+        
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        ActionManager am = ActionManager.getInstance();
+        
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 0;
+        int numFullTDPlayers = 2;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        int numBotAIs = 2;
+        int numAIController = 0;
+        
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(playersCritic,playersInputGen, false,
+                                numHumanPlayers, numRandomPlayers,
+                            numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                            numBotAIs, numAIController,
+                            useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+            System.out.println("Number of rounds " + Game.getInstance().getRoundCount());
+        }
+        
+        int totalWins = am.getP0Victories() + am.getP1Victories();
+        System.out.println("Victories vs bot: " + totalWins);
+        
+    }
+    
+}

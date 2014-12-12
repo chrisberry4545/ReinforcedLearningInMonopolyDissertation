@@ -1,0 +1,68 @@
+package Model;
+
+import java.awt.Color;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ * Stores all of the site groups.
+ * @author chris
+ */
+public class SiteGroup {
+    
+    private static SiteGroup instance = null;
+    private Map<Color, List<Site>> siteGroups;
+    
+    /**
+     * Only one instance of this class exists.
+     */
+    protected SiteGroup() {
+        siteGroups = new HashMap();
+    }
+    
+    /**
+    * Returns an instance of the singleton class PropertyGroup
+    * @return ActionManager instance
+    */
+    public static SiteGroup getInstance() {
+        if (instance == null) {
+            instance = new SiteGroup();
+        }
+        return instance;
+    }
+    
+    public void addSite(Site site) {
+        Color color = site.getColor();
+        if (siteGroups.containsKey(color)) {
+            //Already exists
+            siteGroups.get(color).add(site);
+        } else {
+            List sitesList = new ArrayList();
+            sitesList.add(site);
+            siteGroups.put(color, sitesList);
+        }
+    }
+    
+    /**
+     * Checks if other properties have enough houses to add house to the one
+     * specified.
+     * @param site which you want to add a house to.
+     * @return whether or not it's possible to add a house.
+     */
+    public boolean otherPropertiesHaveEnoughHouses(Site site) {
+        Color color = site.getColor();
+        //Go through all the sites of the color and check everyone of them
+        //doesn't have less houses than the one the player wants to add
+        //a house to.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : this.siteGroups.get(color)) {
+            if (oneSite.getHouses() < houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+}

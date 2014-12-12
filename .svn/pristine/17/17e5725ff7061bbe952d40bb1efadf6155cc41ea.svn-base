@@ -1,0 +1,45 @@
+package Model.Spaces;
+
+import Model.Players.Player;
+
+/**
+ *
+ * @author chris
+ */
+public class Utility extends Space {
+    
+    private final int singleUtilMultiplyer = 4;
+    private final int twoUtilMultiplyer = 10;
+    
+    public Utility(String name, int intialCost, int mortgageRate) {
+        super(name, intialCost, mortgageRate);
+        
+    }
+    
+    @Override
+    public int performAction(int diceRoll, Player p) {
+        super.buyProperty(p, getRent(diceRoll));
+        return 0;
+    }
+    
+    /**
+     * Gets the rent of the utilities. Depends on the number
+     * of utilities the player owns.
+     * @param diceRoll
+     * @return rent amount due.
+     */
+    public int getRent(int diceRoll) {
+        if (owner != null) {
+            int utilsOwned = owner.getNumberOfUtilOwned();
+            switch(utilsOwned) {
+                case 1 : return singleUtilMultiplyer * diceRoll;
+                case 2 : return twoUtilMultiplyer * diceRoll;
+            }
+        }
+        return 0;
+    }
+    
+    
+
+    
+}

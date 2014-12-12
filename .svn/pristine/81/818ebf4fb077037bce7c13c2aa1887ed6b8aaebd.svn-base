@@ -1,0 +1,25 @@
+package Model;
+
+/**
+ *
+ * @author chris
+ */
+public class Station extends Space {
+    
+    private final int[] stationRents = {25,50,100,200};
+    
+    public Station(String name, int intialCost, int mortgageRate) {
+        super(name, intialCost, mortgageRate);
+    }
+    
+    @Override
+    public int getRent(int diceRoll) {
+        int noOfStations = owner.getNumberOfStationsOwned();
+        if (noOfStations != 0) {
+            return stationRents[noOfStations];
+        } else {
+            return 0;
+        } 
+    }
+    
+}

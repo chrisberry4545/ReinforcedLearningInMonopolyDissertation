@@ -1,0 +1,141 @@
+package Model.Players;
+
+import Model.Board;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.List;
+
+/**
+ * A version of TD lambda AI using many less input nodes which simplify the game
+ * of Monopoly significantly but may allow the training to occur at a much
+ * quicker pace. I intend to view the results of this and see if any significant
+ * learning can be achieved.
+ * @author Chris Berry
+ */
+public class SimpleTDPlayer extends AbstractTDPlayer {
+    
+    //Nodes for two players ONLY.
+    public static final int NUM_PLAYERS = 2;
+    public static final int NUM_INPUT_NODES = NUM_PLAYERS + 22 + 4 + 2;
+    public static final int NUM_OUTPUT_NODES = 12;
+    public static final int NUM_HIDDEN_NODES = 25;
+    /**
+     * This value gets returned from evaluators functions if the player cannot
+     * make this move. It is filled with highly negative values so the AI
+     * will not play these choices.
+     * These need to be changed if the outputs are changed.
+     */
+    private double[] badOutput = {
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo};
+    
+    /**
+     * Creates a simple TD Player.
+     * @param playerNumber unique number player should use.
+     * @param currentBoard current board player will use.
+     * @param critic of neural network used by the player.
+     */
+    public SimpleTDPlayer(int playerNumber, Board currentBoard, Critic critic) {
+        super(playerNumber,currentBoard,critic);
+    }
+
+/**
+ * Methods overriding other AbstractTDPlayer methods.
+ */    
+    /**
+     * Gets an array representing the current inputs for the neural network
+     * based on the current state of the board.
+     * @return 
+     */
+    @Override
+    public double[] getCurrentInputs() {
+        double[] inputs = new double[NUM_INPUT_NODES];
+        int inputNumber = 0;
+        //Add the nodes for all the players money.
+        List<Player> allPlayers = Game.getInstance().getPlayers();
+        for (int i = 0; i < NUM_PLAYERS; i++) {
+            if (allPlayers.size() > i) {
+                inputs[inputNumber]
+                        = allPlayers.get(i).getMoney()/1000;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //22 nodes representing properties.
+        for (Site site: super.board.getAllSites()) {
+            //Adds values for owner.
+            if (site.getOwner() != null) {
+                inputs[inputNumber] =
+                    site.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //4 nodes representing stations.
+        for (Station station : super.board.getAllStations()) {
+            if (station.getOwner() != null) {
+                inputs[inputNumber] =
+                        station.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //2 nodes representing utilies.
+        for (Utility utility : super.board.getAllUtilities()) {
+            if (utility.getOwner() != null) {
+                inputs[inputNumber] =
+                        utility.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        return inputs;
+    }
+/**
+ * Getter methods.
+ */    
+    /**
+     * Gets the number of input nodes used by this TD Player.
+     * @return number of input nodes.
+     */
+    @Override
+    public int getNumInputNodes() {
+        return NUM_INPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of output nodes used by this TD Player.
+     * @return number of output nodes.
+     */
+    @Override
+    public int getNumOutputNodes() {
+        return NUM_OUTPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of hidden nodes used by this TD Player.
+     * @return number of hidden nodes.
+     */
+    @Override
+    public int getNumHiddenNodes() {
+        return NUM_HIDDEN_NODES;
+    }
+    
+    /**
+     * Gets the bad output array used by this TD Player.
+     * @return bad output array used by the player.
+     */
+    @Override
+    public double[] getBadOutputArray() {
+        return badOutput;
+    }    
+}

@@ -1,0 +1,75 @@
+package Model.Players.NeuralNetwork.CriticPackage;
+
+import Model.Game;
+import Model.Players.NeuralNetwork.Generalizer;
+
+/** 
+ * A class for interpreting whether the game has finished or is still in 
+ * progress and sending the required variables to analysed to the generaliser.
+ * This class is specific to the game of Monopoly and should be remade for
+ * different neural networks. This version uses different win rewards based
+ * on whether the player won by bankrupting the other players or through
+ * having the most assets at the round limit.
+ * @author Chris Berry
+ */
+public class CriticWinTypeMattersV2 extends Critic {
+    
+    private Generalizer generalizer;
+    private int numOutputNodes;
+    private boolean blockLearning;
+    private double winTypeMaxRoundsWin = 0.1;
+    private double winTypeLoose = -0.1;
+    
+    /**
+     * Creates a new critic with the given parameters.
+     * @param generalizer which critic will feed information to.
+     * @param numberOfOutputNodes used by the TD AIs utilising the neural
+     * network.
+     * @param offsetForMoneyOutput value where the monetary amount of actions
+     * starts appearing.
+     */
+    public CriticWinTypeMattersV2(Generalizer generalizer, int numberOfOutputNodes) {
+        super(generalizer, numberOfOutputNodes);
+        this.numOutputNodes = numberOfOutputNodes;
+        this.generalizer = generalizer;
+    }
+
+/**
+ * Key method.
+ */    
+    
+    /**
+     * Feeds the previous states inputs and the results of the end game through
+     * to the generalizer. This should only be called when the game has finished
+     * to avoid producing an error.
+     * @param previousStatesInput inputs from previous state.
+     * @param wonGame true if the player who the inputs are for won the game.
+     */
+    @Override
+    public void generalize(double[] previousStatesInput, boolean wonGame) {
+        if (!blockLearning) {
+            if (Game.getInstance().isFinished()) {
+                if (Game.getInstance().getPlayers().size() == 1) {
+                    double[] finalResults = new double[numOutputNodes];
+                    if (wonGame) {
+                        if (Game.getInstance().getRoundCount() == Game.MAX_ROUNDS) {
+                            System.out.println("Hit max rounds, lower reward");
+                            finalResults[0] = winTypeMaxRoundsWin;
+                        } else {
+                            System.out.println("Winner bankrupted all players");
+                            double winReward = (Game.MAX_ROUNDS - Game.getInstance().getRoundCount()) * 0.01 + 0.1;
+                            System.out.println("win reward: " + winReward);
+                            finalResults[0] = winReward;
+                        }
+                    } else {
+                        finalResults[0] = winTypeLoose;
+                    }
+                    generalizer.generalize(previousStatesInput, finalResults);
+                } else {
+                    System.err.println("The game is over but supposedly there"
+                                    + " are no players left.");
+                }
+            }
+        }
+    }
+}

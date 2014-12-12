@@ -1,0 +1,205 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package GameMechanicsTesting;
+
+import Model.Players.*;
+import Model.Spaces.*;
+import GeneralTestMethods.GeneralTestMethods;
+import Model.DealOffer;
+import Model.Game;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author chris
+ */
+public class DealOfferTest extends GeneralTestMethods{
+    
+    public DealOfferTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    @Test
+    public void dealOfferTest() {
+        receiveMoneyTest();
+        askForMoneyTest();
+        receiveSpacesTest();
+        requestSpaceTest();
+        gOJCardOfferTest();
+        gOJCardRequestTest();
+    }
+    
+    private void receiveMoneyTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        int moneyToReceive = 500;
+        int startingMoney = testPlayer.getMoney();
+        int expectedMoney = startingMoney + moneyToReceive;
+        offer.offerCash(moneyToReceive);
+        testPlayer.assessAnOffer(offer,otherPlayer);
+        playerReceivedCorrectAmount(expectedMoney);
+    }
+    
+    private void askForMoneyTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        int moneyToAskFor = 500;
+        int startingMoney = testPlayer.getMoney();
+        int expectedMoney = startingMoney - moneyToAskFor;
+        offer.requestCash(moneyToAskFor);
+        testPlayer.assessAnOffer(offer,otherPlayer);
+        playerReceivedCorrectAmount(expectedMoney);
+    }
+    
+    private void playerReceivedCorrectAmount(int predictedAmount) {
+        if (testPlayer.getMoney() == predictedAmount) {
+            System.out.println("Player has " + predictedAmount + " which is the"
+                    + " amount that was expected.");
+        } else {
+            fail("Player was expected to be left with " + predictedAmount +
+                    " but was instead left with " + testPlayer.getMoney());
+        }
+    }
+    
+    private void receiveSpacesTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        List<Space> spacesInOffer = new ArrayList();
+        //Spaces to add
+        Space site1 = Game.getInstance().getBoard().getAllSites().get(0);
+        Space site2 = Game.getInstance().getBoard().getAllSites().get(4);
+        Space station1 = Game.getInstance().getBoard().getAllStations().get(0);
+        Space util1 = Game.getInstance().getBoard().getAllUtilities().get(0);
+        offer.addPropertyToOffer(site1);
+        offer.addPropertyToOffer(site2);
+        offer.addPropertyToOffer(station1);
+        offer.addPropertyToOffer(util1);
+        spacesInOffer.add(site1);
+        spacesInOffer.add(site2);
+        spacesInOffer.add(station1);
+        spacesInOffer.add(util1);
+        
+        testPlayer.assessAnOffer(offer, otherPlayer);
+        //Test players should automattically accept.
+        if (doesPlayerOwnProperties(spacesInOffer, testPlayer)) {
+            
+        } else {
+            fail("Player has not been given the correct properties.");
+        }
+    }
+    
+    private boolean doesPlayerOwnProperties(List<Space> properties,
+            Player player) {
+        for (Space property : properties) {
+            if (!property.getOwner().equals(player)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private void requestSpaceTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        List<Space> spacesInOffer = new ArrayList();
+        //Spaces to add
+        Space site1 = Game.getInstance().getBoard().getAllSites().get(0);
+        Space site2 = Game.getInstance().getBoard().getAllSites().get(4);
+        Space station1 = Game.getInstance().getBoard().getAllStations().get(0);
+        Space util1 = Game.getInstance().getBoard().getAllUtilities().get(0);
+        offer.addPropertyToRequest(site1);
+        offer.addPropertyToRequest(site2);
+        offer.addPropertyToRequest(station1);
+        offer.addPropertyToRequest(util1);
+        spacesInOffer.add(site1);
+        spacesInOffer.add(site2);
+        spacesInOffer.add(station1);
+        spacesInOffer.add(util1);
+        for (Space space : spacesInOffer) {
+            space.setOwner(testPlayer);
+        }
+        
+        testPlayer.assessAnOffer(offer, otherPlayer);
+        //Test players should automattically accept.
+        if (!doesPlayerOwnProperties(spacesInOffer, testPlayer)) {
+            System.out.println("Test succesful: test player no longer owns"
+                    + " the properties");
+        } else {
+            fail("The player still owns some of the properties which were "
+                    + "supposed to be requested in the deal");
+        }
+    }
+    
+    private void gOJCardOfferTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        int numberOfJailCardsToOffer = 2;
+        for (int i = 0; i < numberOfJailCardsToOffer; i++) {
+            otherPlayer.addGetOutOfJailCard();
+        }
+        offer.offerGetOutOfJailCards(numberOfJailCardsToOffer);
+        testPlayer.assessAnOffer(offer,otherPlayer);
+        if (testPlayer.getNumberOfGetOutOfJailCards() 
+                == numberOfJailCardsToOffer) {
+            System.out.println("Test Successful: Player has received the correct"
+                    + " amount of get out of jail cards (" + 
+                    numberOfJailCardsToOffer + ")");
+        } else {
+            fail("The player hasn't received the correct amount of get out"
+                    + " of jail cards. He has " +
+                    testPlayer.getNumberOfGetOutOfJailCards() +
+                    " when he should have " +
+                    numberOfJailCardsToOffer);
+        }
+    }
+    
+    private void gOJCardRequestTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        DealOffer offer = new DealOffer();
+        int numberOfJailCardsToRequest = 2;
+        for (int i = 0; i < numberOfJailCardsToRequest; i++) {
+            testPlayer.addGetOutOfJailCard();
+        }
+        offer.requestGetOutOfJailCards(numberOfJailCardsToRequest);
+        testPlayer.assessAnOffer(offer,otherPlayer);
+        if (testPlayer.getNumberOfGetOutOfJailCards() 
+                - numberOfJailCardsToRequest == 0) {
+            System.out.println("Test Successful: Player has given away the correct"
+                    + " amount of get out of jail cards (" + 
+                    numberOfJailCardsToRequest + ")");
+        } else {
+            fail("The player hasn't given away the correct amount of get out"
+                    + " of jail cards. He has " +
+                    testPlayer.getNumberOfGetOutOfJailCards() +
+                    " when he should have 0");
+        }
+    }
+    
+    
+}

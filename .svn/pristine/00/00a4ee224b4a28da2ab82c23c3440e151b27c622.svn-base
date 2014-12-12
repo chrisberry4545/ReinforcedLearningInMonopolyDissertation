@@ -1,0 +1,259 @@
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import Model.Spaces.Space;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.*;
+import javax.swing.JOptionPane;
+
+/**
+ * Represents a Player in monopoly.
+ * @author chris
+ */
+public abstract class Player {
+    
+    private Space currentSpace;
+    private List<Space> properties;
+    private int money;
+    private int getOutOfJailCards;
+    private Collection<SiteGroup> propertyGroups;
+    private int turnsInJailCounter;
+    protected int token;
+    private boolean inJail;
+    
+    public static final int PAY_TO_LEAVE = 0;
+    public static final int ROLL_TO_LEAVE = 1;
+    public static final int GET_OUT_OF_JAIL_CARD = 2;
+    public static final int JAIL_BUY_HOUSES = 3;
+    
+    public static final int ROLL_DICE = 0;
+    public static final int BUY_HOUSES = 1;
+    
+    public static final int NOT_ENOUGH_MONEY = 9;
+    
+    
+    
+    public Player(int setToken) {
+        this.token = setToken;
+        properties = new ArrayList();
+        this.inJail = false;
+    }
+    
+    /**
+     * Rolls two dice and returns their outcome. If a double is rolled the
+     * dice can be rolled again. If 3 doubles are rolled a value of -1 is
+     * returned and the player should be sent to jail.
+     * @return value of player's dice rolls or -1 if they rolled 3 doubles.
+     */
+    public int rollForTurn() {
+        int dice1;
+        int dice2;
+        int total = 0;
+        for (int i = 0; i < 3; i++) {
+            dice1 = rollDice();
+            dice2 = rollDice();
+            total += dice1 + dice2;
+            //If dice aren't the same (E.g no double is rolled).
+            if (dice1 != dice2) {
+                return total;
+            }
+        }
+        //If no total is returned then the player has rolled 3 doubles
+        //and should be sent to jail. This is notified with a return of -1.
+        return -1;
+    }
+    
+    /**
+     * Rolls a single 6 sided dice and returns the result.
+     * @return the result of rolling a 6 sided dice.
+     */
+    public int rollDice() {
+        return 1 + (int)(Math.random() * ((6 - 1) + 1));
+    }
+    
+    public void setSpace(Space newSpace) {
+        this.currentSpace = newSpace;
+    }
+    
+    /**
+     * Changes a players money by a given amount.
+     * Returns false if the player can't afford this.
+     * @param amount
+     * @return 
+     */
+    public boolean changeMoney(int amount) {
+        int newAmount = money + amount;
+        if (newAmount >= 0) {
+            this.money = newAmount;
+            return true;
+        }
+        return false;
+    }
+    
+    public int getMoney () {
+        return money;
+    }
+    
+    public int getNumberOfUtilOwned() {
+        return getNumberOfCardTypeOwned(Utility.class);
+    }
+    
+    public int getNumberOfStationsOwned() {
+        return getNumberOfCardTypeOwned(Station.class);
+    }
+    
+    public int getNumberOfCardTypeOwned(Class cardType) {
+        int cardTypes = 0;
+        for (Space property : properties) {
+            if (property.getClass().equals(cardType)) {
+                cardTypes++;
+            }
+        }
+        return cardTypes;
+    }
+    
+    public int getToken() {
+        return token;
+    }
+    
+    public Space getCurrentSpace() {
+        return currentSpace;
+    }
+    
+    public List<Space> getProperties() {
+        return properties;
+    }
+    
+    public List<Site> getSites() {
+        List<Site> sites = new ArrayList();
+        for (Space property : properties) {
+            if (property.getClass().equals(Site.class)) {
+                sites.add((Site)property);
+            }
+        }
+        return sites;
+    }
+    
+    public void addProperty(Space p) {
+        properties.add(p);
+    }
+    
+    /**
+     * Adds one get out of jail card to the player.
+     */
+    public void addGetOutOfJailCard() {
+        getOutOfJailCards++;
+    }
+    
+    /**
+     * Sets the user in or out of jail.
+     * @param goToJail 
+     */
+    public void setInJail(boolean goToJail) {
+        this.inJail = goToJail;
+    }
+    
+    /**
+     * Returns if the user is in jail or not.
+     * @return true if the user is in jail.
+     */
+    public boolean inJail() {
+        return inJail;
+    }
+    
+    /**
+     * Ask player yes/no question
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    public abstract boolean askPlayerQuestion(String message, String title);
+    
+    /**
+     * Messages the player with some information.
+     * @param message to give player
+     * @param title of message
+     */
+    public abstract void messagePlayer (String message, String title);
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    public abstract int askPlayerInJailOptions();
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    public abstract int askPlayerMoveOptions();
+        
+    /**
+     * Allows user to select from a list of Sites and returns the site 
+     * selected.
+     * @return the Site selected by the user.
+     */
+    public abstract Site chooseProperty();
+    
+    /**
+     * Lets the player by the property if they have enough money.
+     * @param player buying the property.
+     * @param property to buy
+     * @return true if the player has enough money to successfully buy the property.
+     */
+    public boolean buyProperty(Space property) {
+        int cost = property.getIntialCost();
+        if (this.getMoney() >= cost) {
+            money -= cost;
+            property.setOwner(this);
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    /**
+     * The player will try and leave jail.
+     * @return true if the player can afford to.
+     */
+    public boolean payToLeaveJail() {
+        if (changeMoney(-Game.leaveJailCost)) {
+            setInJail(false);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Attempt to roll a double to leave jail.
+     * @return true if a double is successfully rolled.
+     */
+    public boolean rollToLeaveJail() {
+        int dice1 = rollDice();
+        int dice2 = rollDice();
+        if (dice1 == dice2) {
+            setInJail(false);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Attempt to use a get out of jail card to leave jail.
+     * @return true if card used succesfully, false if the user doesn't have
+     * a card.
+     */
+    public boolean useGetOutOfJailCard() {
+        if (getOutOfJailCards > 0) {
+            getOutOfJailCards--;
+            setInJail(false);
+            return true;
+        }
+        return false;
+    }
+    
+}

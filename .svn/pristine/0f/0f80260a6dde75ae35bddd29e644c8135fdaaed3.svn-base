@@ -1,0 +1,32 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class MovementCard extends CardAction{
+    
+    private int spaceToMoveTo;
+    private boolean passGoMoney;
+    
+    public MovementCard(int spaceNumber, boolean collectGoMoney) {
+        this.spaceToMoveTo = spaceNumber; 
+        this.passGoMoney = collectGoMoney;
+    }
+    
+    @Override
+    public void performAction(Player player) {
+        Game.getInstance().movePlayerToSpaceNumber(player, spaceToMoveTo,
+                passGoMoney);
+        //Dice roll doesn't matter.
+        Board.getInstance().get(spaceToMoveTo).performAction(1, player);
+    }
+    
+}

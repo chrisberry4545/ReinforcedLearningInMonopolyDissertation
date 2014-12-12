@@ -1,0 +1,88 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Board;
+import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Players.Player;
+import Model.Spaces.Site;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.GridLayout;
+import Model.Spaces.Space;
+
+
+/**
+ *
+ * @author chris
+ */
+public class HouseSellingMenu extends ActionFrame{
+    
+    public HouseSellingMenu(Player currentPlayer) {
+        super(currentPlayer.getSitesWithHousesWhichCanBeSold());
+    }
+    
+    @Override
+    public JPanel setUpMainPanel(List<? extends Space> sites) {
+        List<Site> siteList = (List<Site>)sites;
+        this.setTitle("Sell Houses");
+        JPanel housePanel = new JPanel();
+        housePanel.setLayout(new BoxLayout(housePanel, BoxLayout.Y_AXIS));
+        JPanel titlesPanel = new JPanel();
+        titlesPanel.setBackground(ActionFrame.topBarColor);
+        titlesPanel.setLayout(new GridLayout());
+        JLabel propertyLabel = new JLabel("Property", JLabel.CENTER);
+        Font boldFont =new Font(propertyLabel.getFont().getName(), Font.BOLD, 
+                propertyLabel.getFont().getSize());  
+        propertyLabel.setFont(boldFont);
+        titlesPanel.add(propertyLabel);
+        
+        JLabel housesLabel = new JLabel("Number of houses", JLabel.CENTER);
+        housesLabel.setFont(boldFont);
+        titlesPanel.add(housesLabel);
+        
+        JLabel housesCost = new JLabel("House Selling price", JLabel.CENTER);
+        housesCost.setFont(boldFont);
+        titlesPanel.add(housesCost);
+        
+        JLabel buyHousesLabel = new JLabel("Sell Houses", JLabel.CENTER);
+        buyHousesLabel.setFont(boldFont);
+        titlesPanel.add(buyHousesLabel);
+        housePanel.add(titlesPanel);
+        for (Site site : siteList) {
+            housePanel.add(createSitePanel(site));
+        }
+        
+        return housePanel;
+    }
+    
+    public JPanel createSitePanel(final Site site) {
+        JPanel sitePanel = new JPanel();
+        sitePanel.setLayout(new GridLayout());
+        JLabel siteNameLabel = new JLabel(site.getName(), JLabel.CENTER);
+        siteNameLabel.setBackground(Board.getColor(site.getColorNumber()));
+        siteNameLabel.setForeground(Board.getMatchingTextColor(site.getColorNumber()));
+        siteNameLabel.setOpaque(true);
+        sitePanel.add(siteNameLabel);
+        sitePanel.add(new JLabel("" + site.getHouses(), JLabel.CENTER));
+        sitePanel.add(new JLabel("" + site.getHouseSellPrice(), JLabel.CENTER));
+        JButton sellHouseButton = new JButton("");
+        sellHouseButton.setAction(new AbstractAction("Sell House") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setPropertySelected(site);
+            }
+        });
+        sitePanel.add(sellHouseButton);
+        return sitePanel;
+    } 
+    
+}

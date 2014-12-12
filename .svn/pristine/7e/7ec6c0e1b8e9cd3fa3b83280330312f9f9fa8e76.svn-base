@@ -1,0 +1,107 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Players.Player;
+import java.awt.event.ActionEvent;
+import javax.swing.*;
+
+/**
+ *
+ * @author Chris
+ */
+public class PlayerButtons extends JPanel{
+    
+    private int playerChoice = -1;
+    
+    public PlayerButtons() {
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
+        
+        JPanel bottemPanel = new JPanel();
+        bottemPanel.setLayout(new BoxLayout(bottemPanel, BoxLayout.X_AXIS));
+        
+        topPanel.add(Box.createHorizontalGlue());
+        JButton rollButton = setUpRollButton();
+        topPanel.add(rollButton);
+        topPanel.add(Box.createHorizontalGlue());
+        topPanel.add(setUpDealButton());
+        topPanel.add(Box.createHorizontalGlue());
+        topPanel.add(setUpBuyHouseButton());
+        topPanel.add(Box.createHorizontalGlue());
+        topPanel.add(setUpSellHouseButton());
+        topPanel.add(Box.createHorizontalGlue());
+        
+        bottemPanel.add(Box.createHorizontalGlue());
+        bottemPanel.add(setUpMortgagePropertyButton());
+        bottemPanel.add(Box.createHorizontalGlue());
+        bottemPanel.add(setUpUnMortgagePropertyButton());
+        bottemPanel.add(Box.createHorizontalGlue());
+        bottemPanel.add(setUpExitButton());
+        bottemPanel.add(Box.createHorizontalGlue());
+        
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.add(topPanel);
+        this.add(bottemPanel);
+        
+        topPanel.setOpaque(false);
+        bottemPanel.setOpaque(false);
+        this.setOpaque(false);
+        
+    }
+    
+    private JButton setUpRollButton() {
+        return setUpButton(Player.ROLL_DICE, "Roll Dice");
+    }
+    
+    private JButton setUpBuyHouseButton() {
+        return setUpButton(Player.BUY_HOUSES, "Buy Houses");
+    }
+    
+    private JButton setUpSellHouseButton() {
+        return setUpButton(Player.SELL_HOUSES, "Sell Houses");
+    }
+    
+    private JButton setUpMortgagePropertyButton() {
+        return setUpButton(Player.MORTGAGE_PROPERTIES, "Mortgage Properties");
+    }
+    
+    private JButton setUpUnMortgagePropertyButton() {
+        return setUpButton(Player.BUY_BACK_MORTGAGED_PROPERTIES,
+                "Buy Back Properties");
+    }
+    
+    private JButton setUpDealButton() {
+        return setUpButton(Player.OFFER_PROPERTY, "Make a Deal");
+    }
+    
+    private JButton setUpExitButton() {
+        return setUpButton(Player.EXIT_GAME_STANDARD, "Exit Game");
+    }
+    
+    private JButton setUpButton(final int actionResult, String buttonText) {
+        JButton button = new JButton();
+        button.setAction(new AbstractAction(buttonText) {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setPlayerChoice(actionResult);
+            }
+        });
+        return button;
+        
+    }
+    
+    public void setPlayerChoice(int playerChoice) {
+        this.playerChoice = playerChoice;
+    }
+    
+    public int getPlayerChoice() {
+        return this.playerChoice;
+    }
+    
+}

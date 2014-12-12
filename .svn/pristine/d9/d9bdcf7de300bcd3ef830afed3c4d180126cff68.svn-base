@@ -1,0 +1,17 @@
+package Model.Cards;
+
+/**
+ *
+ * @author chris
+ */
+public class Card {
+    
+    private String name;
+    private CardAction action;
+    
+    public Card(String name, CardAction action) {
+        this.name = name;
+        this.action = action;
+    }
+    
+}

@@ -1,0 +1,119 @@
+package Model.Spaces;
+
+import Model.Players.Player;
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Stores all of the site groups. I.e all orange properties or all green
+ * properties.
+ * @author Chris Berry
+ */
+public class SiteGroup {
+    
+    private static SiteGroup instance = null;
+    private static Map<Integer, List<Site>> siteGroups = new HashMap();
+    
+    /**
+     * Only one instance of this class exists.
+     */
+    protected SiteGroup() {
+    }
+
+/**
+ * Set up methods.
+ */    
+    /**
+    * Returns an instance of the singleton class PropertyGroup
+    * @return ActionManager instance
+    */
+    public static SiteGroup getInstance() {
+        if (instance == null) {
+            instance = new SiteGroup();
+        }
+        return instance;
+    }
+    
+    /**
+     * Adds a Site to the Site groups based upon its colour.
+     * @param site to add.
+     */
+    public static void addSite(Site site) {
+        int colorNum = site.getColorNumber();
+        if (siteGroups.containsKey(colorNum)) {
+            //Already exists
+            siteGroups.get(colorNum).add(site);
+        } else {
+            List sitesList = new ArrayList();
+            sitesList.add(site);
+            siteGroups.put(colorNum, sitesList);
+        }
+    }
+ 
+/**
+ * In Game methods.
+ */    
+    /**
+     * Checks if other properties have enough houses to add house to the one
+     * specified.
+     * @param site which you want to add a house to.
+     * @return whether or not it's possible to add a house.
+     */
+    public static boolean otherPropertiesHaveEnoughHouses(Site site) {
+        int colorNumber = site.getColorNumber();
+        //Go through all the sites of the color and check everyone of them
+        //doesn't have less houses than the one the player wants to add
+        //a house to.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : siteGroups.get(colorNumber)) {
+            if (oneSite.getHouses() < houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * If the other sites in the site group of the site argument have have more
+     * houses on them than the site in question, then you cannot sell a house
+     * on this site.
+     * @param site to check if it's possible to sell houses on.
+     * @return true if houses can be sold on the site.
+     */
+    public static boolean canSellHouseOnProperty(Site site) {
+        int colorNumber = site.getColorNumber();
+        //Go through all sites of the color and check every one of them doesn't
+        //have too few houses.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : siteGroups.get(colorNumber)) {
+            if (oneSite.getHouses() > houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Checks if a single player owns all the sites of a given color number.
+     * Returns true if they are or false if they are not.
+     * @param color of site group.
+     * @return true if player owns all sites in the group.
+     */
+    public static boolean playerOwnsAMonopoly(int colorNumber) {
+        Player p = siteGroups.get(colorNumber).get(0).getOwner();
+        for(Site eachSite : siteGroups.get(colorNumber)) {
+            if (p == null || eachSite.getOwner() == null
+                    || !p.equals(eachSite.getOwner())) {
+                //False is returned if any of the site owners in the color
+                //are different or there is no owner.
+                return false;
+            }
+        }     
+        //Otherwise all the site owners must be the same.
+        return true; 
+    }
+    
+}

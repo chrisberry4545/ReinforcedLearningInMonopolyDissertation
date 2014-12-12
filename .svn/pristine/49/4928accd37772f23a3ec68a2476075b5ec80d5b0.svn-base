@@ -1,0 +1,211 @@
+package Model.Players;
+
+import Model.Board;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.List;
+
+/**
+ * My first TD Player had an oversight in the number of nodes used for whether
+ * a player was in jail. This fixes that problem but I didn't want to change
+ * the original player yet as the program is still running and I think it will
+ * be useful to have a copy of it so I can see exactly how it worked. The new
+ * AI also has nodes for counting the numebr of turns each player is in jail
+ * for. I will put nodes in to represent the number of get out of jail cards
+ * owned by each player.
+ * @author Chris Berry
+ */
+public class SecondTDPlayer extends AbstractTDPlayer {
+    
+    public static final int NUM_INPUT_NODES = 124;
+    public static final int NUM_OUTPUT_NODES = 6;
+    public static final int NUM_HIDDEN_NODES = 50;
+    /**
+     * This value gets returned from evaluators functions if the player cannot
+     * make this move. It is filled with highly negative values so the AI
+     * will not play these choices.
+     * These need to be changed if the outputs are changed.
+     */
+    private double[] badOutput = {
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo};
+    /**
+     * Sets up a TD Player
+     * @param playerNumber sets the player number of the TD Player
+     * @param currentBoard the current board the player will play on.
+     * @param critic used in the TD player's neural network.
+     */
+    public SecondTDPlayer(int playerNumber, Board currentBoard, Critic critic) {
+        super(playerNumber,currentBoard,critic);
+    }
+
+/**
+ * Methods overriding AbstractTDPlayer methods.
+ */    
+    /**
+     * Gets an array representing the current inputs for the neural network
+     * based on the current state of the board.
+     * @return 
+     */
+    @Override
+    public double[] getCurrentInputs() {
+        double[] inputs = new double[NUM_INPUT_NODES];
+        int inputNumber = 0;
+        //Add the nodes for all the players money.
+        //There will always be 6 nodes for this.
+        List<Player> allPlayers = Game.getInstance().getPlayers();
+        for (int i = 0; i < Game.MAX_PLAYERS; i++) {
+            if (allPlayers.size() > i) {
+                inputs[inputNumber]
+                        = allPlayers.get(i).getMoney()/1000;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //22 sets of 4 nodes representing properties.
+        for (Site site: super.board.getAllSites()) {
+            //Adds values for the color.
+            inputs[inputNumber] = site.getColorNumber()/7;
+            inputNumber++;
+            //Adds values for owner.
+            if (site.getOwner() != null) {
+                inputs[inputNumber] =
+                    site.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+            //Adds value for number of houses.
+            inputs[inputNumber] = site.getHouses()/Site.MAX_HOUSES;
+            inputNumber++;
+            //Adds value based on if the place is mortgaged.
+            if (!site.isMortgaged()) {
+                inputs[inputNumber] = 1;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+        }
+        //4 sets of 2 nodes representing stations.
+        for (Station station : super.board.getAllStations()) {
+            if (station.getOwner() != null) {
+                inputs[inputNumber] =
+                        station.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+            if (!station.isMortgaged()) {
+                inputs[inputNumber] = 1;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //2 sets of 2 nodes representing utilies.
+        for (Utility utility : super.board.getAllUtilities()) {
+            if (utility.getOwner() != null) {
+                inputs[inputNumber] =
+                        utility.getOwner().getNumber()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+            if (!utility.isMortgaged()) {
+                inputs[inputNumber] = 1;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //6 node representing whether each player is in jail or not.
+        //And 6 nodes represnting how many turns players are in jail for.
+        for (int i = 0; i < Game.MAX_PLAYERS; i++) {
+            if (allPlayers.size() > i) {
+                if (!allPlayers.get(i).inJail()) {
+                    //If size is greater than current i or the player isn't in jail
+                    //this input should be set to 0.
+                    inputs[inputNumber] = 0;
+                    inputNumber++;
+                    inputs[inputNumber] = 0;
+                } else {
+                    //Input set to 1 if the player is in jail.
+                    inputs[inputNumber] = 1;
+                    inputNumber++;
+                    //Input also includes the number of turns player is in jail
+                    //for.
+                    inputs[inputNumber] = allPlayers.get(i).getTurnsInJail();          
+                }
+            } else {
+                //If the player isn't in the game all of the inputs should be 0.
+                inputs[inputNumber] = 0;
+                inputNumber++;
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        
+        //6 nodes representing the number of get out of jail cards a player
+        //has.
+        for (int i = 0; i < Game.MAX_PLAYERS; i++) {
+            if (allPlayers.size() > i) {
+                inputs[inputNumber] 
+                        = allPlayers.get(i).getNumberOfGetOutOfJailCards()
+                        /Game.MAX_NUM_OF_GET_OUT_OF_JAIL_CARDS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        
+        //Add an input for the turn counter.
+        inputs[inputNumber] = Game.getInstance().getRoundCount();
+        
+        //Return the array of inputs
+        return inputs;
+    }   
+
+/**
+ * Getter Method.
+ */
+    /**
+     * Gets the number of input nodes used by the TD Player.
+     * @return number of input nodes.
+     */
+    @Override
+    public int getNumInputNodes() {
+        return NUM_INPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of output nodes used by the TD Player.
+     * @return number of output nodes.
+     */
+    @Override
+    public int getNumOutputNodes() {
+        return NUM_OUTPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of hidden nodes used by the TD Player.
+     * @return number of hidden nodes.
+     */
+    @Override
+    public int getNumHiddenNodes() {
+        return NUM_HIDDEN_NODES;
+    }
+    
+    /**
+     * Gets the bad output array used by the TD player.
+     * @return bad output array used.
+     */
+    @Override
+    public double[] getBadOutputArray() {
+        return badOutput;
+    }    
+}

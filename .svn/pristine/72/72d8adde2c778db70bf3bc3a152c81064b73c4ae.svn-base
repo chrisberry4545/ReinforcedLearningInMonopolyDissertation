@@ -1,0 +1,128 @@
+package Model.Spaces;
+
+import Model.Game;
+import Model.Players.Player;
+
+
+/**
+ * A purchasable property in Monopoly.
+ * @author chris
+ */
+public abstract class Space {
+    
+    protected boolean mortgaged;
+    protected int mortgageRate;
+    protected String name;
+    protected Player owner;
+    protected int intialCost;
+    protected int spaceNumber;
+    
+    protected static int maxSpaceNumber = 0;
+    
+    public Space(String name,int intialCost, int mortgageRate) {
+        this.spaceNumber = maxSpaceNumber;
+        this.name = name;
+        this.intialCost = intialCost;
+        this.mortgaged = false;
+        this.mortgageRate = mortgageRate;
+        owner = null;
+        maxSpaceNumber++;
+    }
+    
+    /**
+     * Returns whether the space is mortgaged or not.
+     * @return true if the space is mortgaged.
+     */
+    public boolean isMortgaged() {
+        return mortgaged;
+    }
+    
+    /**
+     * Mortgages this property.
+     */
+    public void mortgageProperty() {
+        this.mortgaged = true;
+        owner.optionalMoneyChange(mortgageRate);
+    }
+    
+    /**
+     * Buys back the property from the bank.
+     * @return true if successful.
+     */
+    public boolean unMortgageProperty() {
+        if (owner.optionalMoneyChange(-mortgageRate)) {
+            this.mortgaged = false;
+            return true;
+        }
+        return false;
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public int getSpaceNumber() {
+        return spaceNumber;
+    }
+    
+    public abstract int performAction(int diceRoll, Player p);
+    
+    public Player getOwner() {
+        return owner;
+    }
+    
+    public int getIntialCost() {
+        return intialCost;
+    }
+    
+    /**
+     * Alters the owner of the property to the player. Removes
+     * the property from the current owner.
+     * @param player who will now own the property.
+     */
+    public void setOwner(Player player) {
+        //If it's already owned remove the current user.
+        if (this.owner !=null) {
+            owner.removeProperty(this);
+        }
+        owner = player;
+        player.addProperty(this);
+    }
+    
+    /**
+     * If it is not owned then the player is given the option to buy the
+     * property. It it's owned they pay the rent rate to the owner.
+     * @param player
+     * @param rent 
+     */
+    public void landedOnProperty(Player player, int rent) {
+        if (this.owner != null) {
+            //Somebody owns it. May have to pay rent.
+            if (!this.isMortgaged()) {
+                //Only have to pay if it's not been mortgaged.
+                player.forcedMoneyChange(-rent);
+                owner.optionalMoneyChange(rent);
+                player.messagePlayer("You paid p" + owner.getToken() 
+                    + " " + rent, "Paid rent");
+            }
+        } else {
+            //Asks the player if they want to buy the property.
+            if (player.askPlayerQuestion("Do you want to buy: "
+                    + name + " ?", "Buy Property.")) {
+                //If the accept check if this is possible.
+                if (player.buyProperty(this)) {
+                    player.messagePlayer("You bought " + name
+                               + " for " + intialCost,
+                            "You bought the property");
+                } else {
+                    player.messagePlayer("You can't afford " 
+                            + name, "Not enough money");
+                }
+            //If players don't want to buy the property is should be offered
+            //to other players.
+            } else {
+                Game.getInstance().startAuction(this);
+            }
+        }
+    }
+}

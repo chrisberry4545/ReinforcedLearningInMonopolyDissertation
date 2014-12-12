@@ -1,0 +1,122 @@
+package monopoly;
+
+import Model.Players.*;
+
+/**
+ * Main method for running the game of Monopoly with Reinforced Learning AIs.
+ * @author Chris Berry
+ */
+public class Main {
+
+    private static final int STARTING_RUNS = 13000;
+    
+    private static final String FILE_NAME_TO_SAVE_TO  = "July-24-2013-160HiddenNodes-V2DealSubset";
+
+    private static final String FILE_TO_LOAD = FILE_NAME_TO_SAVE_TO + STARTING_RUNS;
+    
+    private static final int OTHER_NET_RUNS = 40000;
+    
+    private static final String OTHER_NET_NAME = "June-19-2013-lambda0-9-runs";
+    
+    private static final String SECOND_FILE_TO_LOAD = OTHER_NET_NAME + OTHER_NET_RUNS;
+    
+    private static int runNumber = 2;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        int runType = 1;
+        TDInputGenerator inputGen = new FifthTDPlayerVer36(true);
+        System.out.println("Network is using " + inputGen.getNumHiddenNodes() 
+                + " Hidden Nodes...");
+        switch (runType) {
+            case 0 :
+                double lambda = 0.9;
+                int runsBeforeSave = 500;
+                int totalNumberOfRuns = 5000;
+                boolean feedResultsToNet = true;
+                int numberOfNetworks = 1;
+                int numHumanPlayers = 0;
+                int numRandomPlayers = 0;
+                int numFullTDPlayers = 0;
+                int numSimpleTDAIs = 0;
+                int numDBGenRandomAIs = 4;
+                int numSmartBots = 0;
+                boolean differentRunTypes = true;
+                boolean displayGraphics = false;
+                boolean newNetwork = true;
+                boolean fixedWeights = false;
+                boolean blockLearning = false;
+            
+            StandardRun.standardRun(inputGen, lambda, FILE_NAME_TO_SAVE_TO, FILE_TO_LOAD,
+                SECOND_FILE_TO_LOAD, STARTING_RUNS, runsBeforeSave, totalNumberOfRuns,
+                numberOfNetworks, numHumanPlayers, numRandomPlayers,
+                numFullTDPlayers, numSimpleTDAIs,  numDBGenRandomAIs, numSmartBots,
+                differentRunTypes, displayGraphics, newNetwork,
+                fixedWeights, blockLearning, feedResultsToNet);
+            
+                break;
+            case 1 :
+                System.out.println("Sending " + FILE_TO_LOAD + " to ELO Gauntlet");
+                ELOGauntlet.ELOGauntlet4Players(FILE_TO_LOAD, inputGen, inputGen.getNumOutputNodes());
+                break;
+            case 2 :
+                System.out.println("Sending " + FILE_TO_LOAD + " to Query tests");
+                MonopolyQueries.MonopolyQueryOne(FILE_TO_LOAD, inputGen);
+                MonopolyQueries.MonopolyQueryOneV2(FILE_TO_LOAD, inputGen);
+                MonopolyQueries.MonopolyQueryTwo(FILE_TO_LOAD,inputGen);
+                MonopolyQueries.MonopolyQueryTwoV2(FILE_TO_LOAD,inputGen);
+                MonopolyQueries.MonopolyQueryThree(FILE_TO_LOAD, inputGen);
+                MonopolyQueries.MonopolyQueryThreeV2(FILE_TO_LOAD, inputGen);
+                System.out.println("Correct Decisions: " + MonopolyQueries.getCorrectDecisions());
+                MonopolyQueries.ifYouCouldOwnAnyMonopoly(FILE_TO_LOAD,inputGen);
+                MonopolyQueries.ifYouCouldOwnAnyMonopolyAllWithHotels(FILE_TO_LOAD, inputGen);
+                MonopolyQueries.ifYouCouldOwnAnySpace(FILE_TO_LOAD, inputGen);
+                break;
+            case 3 :
+                System.out.println("Sending " + FILE_TO_LOAD + " to Bot Test");
+                ELOGauntlet.TestVsBot1(FILE_TO_LOAD, inputGen, inputGen.getNumOutputNodes());
+                break;
+        }
+    }
+    
+    public static int getRunNumber() {
+        return runNumber;
+    }
+    
+//    public static void runSeries() {
+//
+//        TDInputGenerator inputGen = new FifthTDPlayerVer36(false);
+//        String fileName = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart160Hidden-runs";
+//        String fileToLoad = fileName + "7500";
+//        AbstractEvaluator evaluator = new AbstractEvaluator(fileToLoad);
+//        Generalizer generalizer = new Generalizer(evaluator);
+//        Critic critic = new Critic(generalizer, inputGen.getNumOutputNodes());
+//        FeedResultsToNetwork.feedResultsToNetwork(critic);
+//        String fileNameToSaveTo = fileName + "8500";
+//        evaluator.saveNet(fileNameToSaveTo);
+//        
+//        
+//        fileName = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart140Hidden-runs";
+//        fileToLoad = fileName + "7500";
+//        evaluator = new AbstractEvaluator(fileToLoad);
+//        generalizer = new Generalizer(evaluator);
+//        critic = new Critic(generalizer, inputGen.getNumOutputNodes());
+//        FeedResultsToNetwork.feedResultsToNetwork(critic);
+//        fileNameToSaveTo = fileName + "8500";
+//        evaluator.saveNet(fileNameToSaveTo);
+//        
+//        
+//        fileName = "July-16-2013-4PlayerMoneyDBLearnerMonopolyAndNormalStart80Hidden-runs";
+//        fileToLoad = fileName + "7500";
+//        evaluator = new AbstractEvaluator(fileToLoad);
+//        generalizer = new Generalizer(evaluator);
+//        critic = new Critic(generalizer, inputGen.getNumOutputNodes());
+//        FeedResultsToNetwork.feedResultsToNetwork(critic);
+//        fileNameToSaveTo = fileName + "8500";
+//        evaluator.saveNet(fileNameToSaveTo);
+//    }
+    
+
+    
+}

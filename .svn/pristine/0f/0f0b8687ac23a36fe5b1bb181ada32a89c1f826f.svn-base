@@ -1,0 +1,63 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import java.awt.Image;
+import javax.swing.ImageIcon;
+
+/**
+ *
+ * @author chris
+ */
+public class PlayerToken {
+   
+    public static final int T0 = 0;
+    public static final int T1 = 1;
+    public static final int T2 = 2;
+    public static final int T3 = 3;
+    public static final int T4 = 4;
+    public static final int T5 = 5;
+    public static final int T6 = 6;
+    
+    private int tokenType;
+    private ImageIcon imageIcon;
+    private int playerNumber;
+    
+    public PlayerToken(int tokenType, int playerNumber) {
+        this.playerNumber = playerNumber;
+        this.tokenType = tokenType;
+        this.imageIcon = generatePlayerImageIcon(tokenType);
+    }
+    
+    public ImageIcon generatePlayerImageIcon(int tokenNumber) {
+        Image tokenImage = null;
+        switch (tokenNumber) {
+            case T0 :
+                break;
+            case T1 :
+                break;
+            case T2 : 
+                break;
+            case T3 :
+                break;
+            case T4 :
+                break;
+            case T5 :
+                break;
+            case T6 : 
+                break;
+        }
+        return new ImageIcon(tokenImage);
+    }
+    
+    public ImageIcon getImageIcon() {
+        return imageIcon;
+    }
+    
+    public int getPlayerNumber() {
+        return playerNumber;
+    }
+    
+}

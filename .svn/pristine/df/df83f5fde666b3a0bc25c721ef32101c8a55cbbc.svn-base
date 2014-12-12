@@ -1,0 +1,39 @@
+package Model;
+
+import Model.Players.HumanPlayer;
+
+/**
+ * The Bank in Monopoly.
+ * @author chris
+ */
+public class Bank extends HumanPlayer {
+    
+    private static Bank instance;
+    private int housesLeft;
+    private int hotelsLeft;
+    private final int totalHouses = 35;
+    private final int totalHotels = 13;
+    
+    protected Bank() {
+        super(100);
+        this.housesLeft = totalHouses;
+        this.hotelsLeft = totalHotels;
+        this.changeMoney(100000);
+    }
+    
+    /**
+    * Returns an instance of the singleton class Bank
+    * @return Bank instance
+    */
+    public static Bank getInstance() {
+        if (instance == null) {
+            instance = new Bank();
+        }
+        return instance;
+    }
+    
+    public void actionProperty() {
+        
+    }
+    
+}

@@ -1,0 +1,83 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Board;
+import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Players.Player;
+import Model.Spaces.Site;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.GridLayout;
+import Model.Spaces.Space;
+
+
+/**
+ *
+ * @author chris
+ */
+public class UnMortgagePropertiesMenu extends ActionFrame{
+    
+    public UnMortgagePropertiesMenu(Player currentPlayer) {
+        super(currentPlayer.getMortgagedProperties());
+    }
+    
+    @Override
+    public JPanel setUpMainPanel(List<? extends Space> spaces) {
+        JPanel mortgagePanel = new JPanel();
+        this.setTitle("Buy back mortgaged properties");
+        mortgagePanel.setLayout(new BoxLayout(mortgagePanel, BoxLayout.Y_AXIS));
+        JPanel titlesPanel = new JPanel();
+        titlesPanel.setBackground(ActionFrame.topBarColor);
+        titlesPanel.setLayout(new GridLayout());
+        JLabel propertyLabel = new JLabel("Property", JLabel.CENTER);
+        Font boldFont =new Font(propertyLabel.getFont().getName(), Font.BOLD, 
+                propertyLabel.getFont().getSize());  
+        propertyLabel.setFont(boldFont);
+        titlesPanel.add(propertyLabel);
+        
+        JLabel housesLabel = new JLabel("Payment for Unmortgaging", JLabel.CENTER);
+        housesLabel.setFont(boldFont);
+        titlesPanel.add(housesLabel);
+        
+        JLabel buyHousesLabel = new JLabel("UnMortgage Property", JLabel.CENTER);
+        buyHousesLabel.setFont(boldFont);
+        titlesPanel.add(buyHousesLabel);
+        mortgagePanel.add(titlesPanel);
+        for (Space space : spaces) {
+            mortgagePanel.add(createSitePanel(space));
+        }
+        
+        return mortgagePanel;
+    }
+    
+    public JPanel createSitePanel(final Space space) {
+        JPanel sitePanel = new JPanel();
+        sitePanel.setLayout(new GridLayout());
+        JLabel spaceName = new JLabel(space.getName(), JLabel.CENTER);
+        spaceName.setOpaque(true);
+        spaceName.setBackground(Board.getColor(space.getColorNumber()));
+        spaceName.setForeground(Board.getMatchingTextColor(space.getColorNumber()));
+        sitePanel.add(spaceName);
+        int mortgageRepayment = space.getMortgageRepaymentRate() + space.getMortgageRate();
+        sitePanel.add(new JLabel("" + mortgageRepayment, JLabel.CENTER));
+        JButton buyHouseButton = new JButton("");
+        buyHouseButton.setAction(new AbstractAction("Unmortgage Property") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setPropertySelected(space);
+            }
+        });
+        sitePanel.add(buyHouseButton);
+        return sitePanel;
+    } 
+    
+}

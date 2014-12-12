@@ -1,0 +1,45 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Spaces;
+
+import Model.Game;
+import Model.Players.Player;
+
+/**
+ *
+ * @author chris
+ */
+public class CardSpace extends Space {
+    
+    private boolean isCommChest;
+    
+    public CardSpace(String name, boolean isCommunityChest) {
+        super(name, -1, -1);
+        this.isCommChest = isCommunityChest;
+    }
+    
+    @Override
+    public int performAction(int diceRoll, Player p) {
+       if (isCommChest) {
+           Game.getInstance().drawFromCommunityChest(p);
+       } else {
+           Game.getInstance().drawFromChance(p);
+       }
+       return 0;
+    }
+    
+    /**
+     * Returns whether the space is a community chest or not.
+     * @return 
+     */
+    public boolean isCommChest() {
+        return isCommChest;
+    }
+    
+    public int getFullMortgageValue() {
+        return 0;
+    }
+     
+}

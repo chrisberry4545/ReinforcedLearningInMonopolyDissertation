@@ -1,0 +1,200 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JOptionPane;
+import java.util.Random;
+
+/**
+ *
+ * @author chris
+ */
+public class RandomAI extends AI{
+    
+    Random random;
+    
+    public RandomAI(int tokenNumber) {
+        super(tokenNumber);
+        random = new Random();
+    }
+    
+    /**
+     * Randomly chooses yes or no.
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerQuestion(String message, String title) {
+        int response = randomOptionChoice(2);
+        if (response == 0) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Randomly chooses a jail option.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        int choice = randomOptionChoice(4);
+        return choice;        
+    }
+    
+    /**
+     * Randomly chooses a move option.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerMoveOptions() {
+        //One less than player as there is no need to view properties.
+        int choice = randomOptionChoice(Player.SHOW_PROPERTIES);
+        return choice;
+    }
+        
+    /**
+     * Randomly chooses a property.
+     * @return the Site selected by the user.
+     */
+    @Override
+    public Site chooseProperty() {
+        if (getSites().size() > 0) {
+            int choice = randomOptionChoice(getSites().size());
+            return getSites().get(choice);
+        }
+        return null;
+    }
+    
+    /**
+     * Randomly chooses a property to build houses on.
+     * @return 
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        List<Space> sitesCanBeBuiltOn = getSitesWhichCanBeBuiltOn();
+        if (sitesCanBeBuiltOn.size() > 0) {
+            int choice = randomOptionChoice(sitesCanBeBuiltOn.size());
+            return (Site)sitesCanBeBuiltOn.get(choice);
+        }
+        return null;
+    }
+    
+    /**
+     * Mortgage a property randomly and see if the debt is cleared, else
+     * mortgage another property.
+     * @param properties 
+     */
+    @Override
+    public void mortgageProperties() {
+        List<Space> properties = getMortgagableProperties();
+        //Only needs to happen if there are properties avaliable to mortgage.
+        if (properties.size() > 0) {
+            int choice = randomOptionChoice(properties.size());
+            Space property = properties.get(choice);
+            property.mortgageProperty();
+        }
+    }
+    
+    /**
+     * Randomly chooses to make a bid or not, if it chooses to make a bid,
+     * it will return a random amount up to the player's max money.
+     * @param property to bid on.
+     * @param minimumBid the minimum amount valid to bid.
+     * @return the AI's bid.
+     */
+    @Override
+    public int makeABid(Space property, int minimumBid) {
+        if (randomOptionChoice(2) > 0 &&
+                this.getMoney() - minimumBid >= 0) {
+            int amountToBid = randomOptionChoice(this.getMoney() - minimumBid);
+            amountToBid += minimumBid;
+            return amountToBid;
+        } else {
+            return Player.LEAVE_BIDDING_PROCESS;
+        }
+    }
+    
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse) {
+        return makeABid(null, minBid);
+    }
+    
+    /**
+     * The AI sells a random amount of houses on a random property it owns.
+     */
+    @Override
+    public void sellHouses() {
+        if (getPropertiesWithHouses().size() > 0) {
+            int choice = randomOptionChoice(getPropertiesWithHouses().size());
+            Site site = (Site)getPropertiesWithHouses().get(choice);
+            int numberToSell = randomOptionChoice(site.getHouses());
+            site.returnHouses(numberToSell);
+        }
+    }
+    
+    /**
+     * The AI selects a random property to sell to another random player
+     * at a random price (which the player can afford).
+     */
+    @Override
+    public void offerAPropertyToAnotherPlayer() {
+        List<Space> allProperties = getProperties();
+        if (allProperties.size() > 0) {
+            int propertyChoice = randomOptionChoice(allProperties.size());
+            List<Player> players = Game.getInstance().getPlayers();
+            int playerChoice = randomOptionChoice(players.size());
+            Player chosenPlayer = players.get(playerChoice);
+            int amountToCharge = randomOptionChoice(chosenPlayer.getMoney());
+            chosenPlayer.assessAPropertyOffer(allProperties.get(propertyChoice),
+                    this, amountToCharge);
+        }
+    }
+    
+    /**
+     * The AI randomly chooses whether to buy the property or not.
+     * @param spaceOffered
+     * @param playerOffering
+     * @param priceOffered 
+     */
+    @Override
+    public void assessAPropertyOffer(Space spaceOffered,
+            Player playerOffering, int priceOffered) {
+        if (randomOptionChoice(2) > 1) {
+            purchasePropertyFromOtherPlayer(spaceOffered, playerOffering,
+                    priceOffered);
+        }
+    }
+    
+    /**
+     * Randomly choose a property to buy back and attempt to buy it back.
+     */
+    @Override
+    public void buyBackMortgagedProperty() {
+        List<Space> mortgagedProperties = getMortgagedProperties();
+        if (mortgagedProperties.size() > 0) {
+            int choice = randomOptionChoice(mortgagedProperties.size());
+            mortgagedProperties.get(choice).unMortgageProperty();
+        }
+    }
+
+    /**
+     * Randomly selects a number between 0 and the number of options.
+     * @param numberOfOptions
+     * @return 
+     */
+    public int randomOptionChoice(int numberOfOptions) {
+        int choice = random.nextInt(numberOfOptions);
+        return choice;
+    }
+    
+}

@@ -1,0 +1,47 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import javax.swing.*;
+import java.util.List;
+import Model.Players.Player;
+import java.awt.Color;
+
+/**
+ *
+ * @author chris
+ */
+public class PlayersResourcePanel extends JPanel{
+    
+    private OnePlayersResourcePanel[] playerPanels;  
+    
+    public PlayersResourcePanel(int numPlayers) {
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.add(Box.createVerticalGlue());
+        playerPanels = new OnePlayersResourcePanel[numPlayers];
+        for (int i = 0; i < numPlayers; i++) {
+            OnePlayersResourcePanel resourcePanel = new OnePlayersResourcePanel();
+            playerPanels[i] = resourcePanel;
+            this.add(resourcePanel);
+            this.add(Box.createVerticalGlue());
+        }
+        this.setOpaque(false);
+    }
+    
+    public void updatePlayerStats(List<Player> players, int currentPlayerNum) {
+        for (Player p : players) {
+            playerPanels[p.getNumber()].changePlayer(p.getNumber(),
+                    p.getMoney(), p.getNumberOfGetOutOfJailCards(),
+                    p.getProperties());
+            if (currentPlayerNum == p.getNumber()) {
+                playerPanels[p.getNumber()].setBorder(BorderFactory.createLineBorder(Color.RED));
+            } else {
+                playerPanels[p.getNumber()].setBorder(null);
+            }
+                    
+        }
+    }
+    
+}

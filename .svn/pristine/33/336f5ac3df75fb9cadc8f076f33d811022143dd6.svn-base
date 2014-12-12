@@ -1,0 +1,74 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Board;
+import javax.swing.*;
+import Model.Spaces.Space;
+import java.awt.Color;
+import java.awt.GridLayout;
+import java.util.Map;
+import java.util.HashMap;
+import java.awt.Component;
+import java.util.Set;
+import java.awt.Dimension;
+import java.awt.Font;
+
+/**
+ *
+ * @author chris
+ */
+public class BoardSpaceTile extends JPanel {
+    
+    private JPanel tokenArea = new JPanel();
+    private JLabel houseLabel;
+    private Map<PlayerToken, Component> tokenMap = new HashMap();
+    
+    public BoardSpaceTile(Space space) {
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.setBounds(0, 0, 62, 55);
+        JLabel title = new JLabel(space.getName());
+        title.setOpaque(true);
+        title.setBackground(Board.getColor(space.getColorNumber()));
+        title.setForeground(Board.getMatchingTextColor(space.getColorNumber()));
+        title.setFont(new Font(title.getFont().getName(), Font.PLAIN, 9));
+        this.add(title);
+        
+        houseLabel = new JLabel("Houses: ");
+        houseLabel.setFont(new Font(houseLabel.getFont().getName(), Font.PLAIN, 8));
+        this.add(houseLabel);
+        
+        GridLayout gridLayout = new GridLayout(2,3);
+        gridLayout.setHgap(0);
+        gridLayout.setVgap(0);
+        tokenArea.setLayout(gridLayout);
+        tokenArea.setOpaque(false);
+        tokenArea.setMaximumSize(new Dimension(45,35));
+        this.add(tokenArea); 
+        
+        this.setBackground(BoardDisplay.BOARD_COLOR);
+        this.setBorder(BorderFactory.createLineBorder(Color.black));
+    }
+    
+    public void setHouseNumberLabel(int houseNumbers) {
+        houseLabel.setText("Houses: " + houseNumbers);
+    }
+    
+    public void addPlayerToken(PlayerToken token) {
+        JLabel tokenLabel = new JLabel(token.getImageIcon());
+        tokenArea.add(tokenLabel);
+        tokenMap.put(token, tokenLabel);
+    }
+    
+    public void removePlayerToken(PlayerToken token) {
+        Component component = tokenMap.get(token);
+        tokenArea.remove(component);
+    }
+    
+    public Set<PlayerToken> getTokens() {
+        return tokenMap.keySet();
+    }
+    
+}

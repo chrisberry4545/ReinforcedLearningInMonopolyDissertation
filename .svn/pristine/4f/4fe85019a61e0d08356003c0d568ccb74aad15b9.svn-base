@@ -1,0 +1,109 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JOptionPane;
+import java.util.Random;
+
+/**
+ *
+ * @author chris
+ */
+public class RandomAI extends AI{
+    
+    Random random;
+    
+    public RandomAI(int tokenNumber) {
+        super(tokenNumber);
+        random = new Random();
+    }
+    
+    /**
+     * Randomly chooses yes or no.
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerQuestion(String message, String title) {
+        int response = randomOptionChoice(2);
+        if (response == 0) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Randomly chooses a jail option.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        int choice = randomOptionChoice(4);
+        return choice;        
+    }
+    
+    /**
+     * Randomly chooses a move option.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerMoveOptions() {
+        int choice = randomOptionChoice(2);
+        return choice;
+    }
+        
+    /**
+     * Randomly chooses a property.
+     * @return the Site selected by the user.
+     */
+    @Override
+    public Site chooseProperty() {
+        if (getSites().size() > 0) {
+            int choice = randomOptionChoice(getSites().size());
+            return getSites().get(choice);
+        }
+        return null;
+    }
+    
+    /**
+     * Randomly chooses a property to build houses on.
+     * @return 
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        List<Site> sitesCanBeBuiltOn = getSitesWhichCanBeBuiltOn();
+        if (sitesCanBeBuiltOn.size() > 0) {
+            int choice = randomOptionChoice(sitesCanBeBuiltOn.size());
+            return sitesCanBeBuiltOn.get(choice);
+        }
+        return null;
+    }
+    
+    /**
+     * Mortgage a property randomly and see if the debt is cleared, else
+     * mortgage another property.
+     * @param properties 
+     */
+    @Override
+    public void mortgageProperties(List<Space> properties) {
+        int choice = randomOptionChoice(properties.size());
+        Space property = properties.get(choice);
+        System.out.println("P" + token + " is Mortgaging : " +
+                property.getName());
+        property.mortgageProperty();
+    }
+    
+    public int randomOptionChoice(int numberOfOptions) {
+        int choice = random.nextInt(numberOfOptions);
+        return choice;
+    }
+    
+}

@@ -1,0 +1,878 @@
+package Model.Players;
+
+import Model.Bank;
+import Model.Board;
+import Model.Cards.Card;
+import Model.DealOffer;
+import Model.Game;
+import Model.GameStats;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.math.BigInteger;
+
+/**
+ * Other types of TD players inherit from this class and will override only
+ * the methods they need to do differently.
+ * @author Chris Berry
+ */
+public class AbstractTDPlayer extends AI {
+    
+    protected Board board;
+    private Critic critic;
+    //public static final int MONEY_MULTIPLYER_FOR_VALUE_OUTPUT = 1000;
+    
+    private double[] previousInputs;
+    
+    
+    private int movesMade = 0;
+    private int lastRoundMoney;
+    private double randomChoiceChance = 0.95;
+    private boolean randomMoveOn;
+    private TDInputGenerator inputGen;
+    private static final int moveLimit = 1;
+
+    private TDMoveEvaluator moveEvaluator;
+    
+    public AbstractTDPlayer(int setToken, Board currentBoard, 
+            Critic critic, TDInputGenerator inputGen, boolean randomMoves) {
+        //Sets up the player class with the appropriate token.
+        super(setToken);
+        board = currentBoard;
+        this.critic = critic;
+        this.lastRoundMoney = 0;
+        this.inputGen = inputGen;
+        this.inputGen.setBoard(board);
+        this.moveEvaluator = new TDMoveEvaluator(critic,inputGen, this);
+        this.randomMoveOn = randomMoves;
+    }
+
+/**
+ * Getter methods.
+ */
+    
+    /**
+     * Gets the move evaluator for this TD Player.
+     * @return TDMoveEvaluator
+     */
+    public TDMoveEvaluator getMoveEvaluator() {
+        return this.moveEvaluator;
+    }
+    
+/**
+ * Methods used for deciding the actions of the player.
+ */
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    @Override
+    public boolean askPlayerMoveOptions() {
+        //If previous inputs are not null then there is an action that needs
+        //to be evaluated based on the current results and the previous inputs.
+        if (previousInputs != null) {
+            critic.generalize(previousInputs, 
+                moveEvaluator.getCurrentResultsArray(this.getNumber()));
+            //Needs to be set back to null so the same thing isn't evaluated
+            //twice.
+            previousInputs = null;
+            movesMade = 0;
+        }
+        
+        //Only one move allowed per turn. Roll the diec after this.
+        if (movesMade >= moveLimit) {
+            previousInputs = inputGen.getCurrentInputs(this.getNumber());
+            return true;
+        }
+        
+        //Add a random choice element to force the AI to explore all options
+        boolean result;
+        if (randomMoveOn && Math.random() > randomChoiceChance) {
+            
+            result = playRandomOption();
+        } else {
+            result = playOptionConsideredBest();
+        }
+        movesMade++;
+        return result;
+    }
+    
+    /**
+     * Chooses a random option and does this. Used to force exploration in
+     * the TD AI.
+     * @return true if the AI wants to finish its turn, false otherwise.
+     */
+    private boolean playRandomOption() {
+        int choiceNumber = randomChoice(6) - 1;
+        switch (choiceNumber) {
+            case -1 : //The case where the best choice is to roll the dice
+                //as normal.
+                previousInputs = inputGen.getCurrentInputs(this.getNumber());
+                return true;
+            case 0 : //Add a house to the most valued property. 
+                Map.Entry<Double, Site> propertyMostWorthBuyingHousesOn =
+                        moveEvaluator.getPropertyMostWorthBuyingHouseOn(this);
+                if (propertyMostWorthBuyingHousesOn != null) {
+                    //If null then there are no properties which you can build
+                    //houses on so another option should be chosen.
+                    super.addHouse(propertyMostWorthBuyingHousesOn.getValue());
+                }
+                break;
+            case 1 : //Make an offer to another player.
+                Map.Entry<Double, Map.Entry<Player, DealOffer> >
+                    offerMostWorthMaking 
+                        = moveEvaluator.getOfferMostWorthMaking();
+                //Null if there is no offer than can be made.
+                if (offerMostWorthMaking != null) {
+                    makeAnOfferToAnotherPlayer(
+                            offerMostWorthMaking.getValue().getValue(),
+                            offerMostWorthMaking.getValue().getKey());
+                }
+                break;
+            case 2 : //Mortgage the property with the highest value from mortaging.
+                Map.Entry<Double, Space> propertyMostWorthMortgaging =
+                        moveEvaluator.getPropertyMostWorthMortgaging();
+                if (propertyMostWorthMortgaging != null) {
+                    super.mortgageProperty(propertyMostWorthMortgaging.getValue());
+                }
+                break;
+            case 3 : //Sell house on the property where it would have most value.
+                Map.Entry<Double, Site> propetyMostWorthSellingHousesOn =
+                        moveEvaluator.getPropertyMostWorthSellingHouseOn();
+                if (propetyMostWorthSellingHousesOn != null) {  
+                    super.returnHouse(propetyMostWorthSellingHousesOn.getValue(), 1);
+                }
+                break;
+            case 4 : //UnMortgage a property which gives the highest value.
+                Map.Entry<Double,Space> propertyMostWothUnMortgaging = 
+                        moveEvaluator.getPropertyMostWorthUnMortgaging();
+                if (propertyMostWothUnMortgaging != null) {
+                    super.unmortgageProperty(propertyMostWothUnMortgaging.getValue());
+                }
+                break;
+        }
+        return false;
+    }
+    
+    private boolean playOptionConsideredBest() {
+        //Process each of the players possible moves and see if it is worth
+        //carrying them out.
+        //Check if buying any houses is worth it.
+        Map.Entry<Double, Site> houseMostWorthBuying 
+                = moveEvaluator.getPropertyMostWorthBuyingHouseOn(this);
+        
+        //Check if offering a property is worth it.
+        //Player is only allowed to make one deal a turn.
+        Map.Entry<Double, Map.Entry<Player, DealOffer> >offerMostWorthMaking 
+                = moveEvaluator.getOfferMostWorthMaking();
+       
+        //Check if mortgaging a property is worth it.
+        Map.Entry<Double, Space> spaceMostWorthMortgaging 
+                = moveEvaluator.getPropertyMostWorthMortgaging();
+        
+        //Check if selling a house is worth it.
+        Map.Entry<Double, Site> houseMostWorthSelling 
+                = moveEvaluator.getPropertyMostWorthSellingHouseOn();
+        
+        //Check if buying back a mortgaged property is worth it.
+        Map.Entry<Double, Space> spaceMostWorthUnMortgaging 
+                = moveEvaluator.getPropertyMostWorthUnMortgaging();
+        
+        //Compare these results and find the best option.
+        List<Double> choiceList = new ArrayList();
+        choiceList = addKeyOrBadOutputNo(houseMostWorthBuying, choiceList);
+        choiceList = addKeyOrBadOutputNo(offerMostWorthMaking, choiceList);
+        choiceList = addKeyOrBadOutputNo(spaceMostWorthMortgaging, choiceList);
+        choiceList = addKeyOrBadOutputNo(houseMostWorthSelling, choiceList);
+        choiceList = addKeyOrBadOutputNo(spaceMostWorthUnMortgaging, choiceList);
+        
+        //Check if doing nothing provides the best output
+        double bestChoice = moveEvaluator.getThisPlayersResults();
+        int choiceNumber = -1;
+        for (int i = 0; i < choiceList.size(); i++) {
+            //If the next choice is better than the current bestChoice then
+            //that choice becomes the best choice.
+            if (choiceList.get(i) > bestChoice) {
+                bestChoice = choiceList.get(i);
+                choiceNumber = i;
+            }
+        }
+        switch (choiceNumber) {
+            case -1 : //The case where the best choice is to roll the dice
+                //as normal.
+                previousInputs = inputGen.getCurrentInputs(this.getNumber());
+                return true;
+            case 0 : //Add a house to the most valued property. 
+                super.addHouse(houseMostWorthBuying.getValue());
+                break;
+            case 1 : //Make an offer to another player.
+                makeAnOfferToAnotherPlayer(
+                        offerMostWorthMaking.getValue().getValue(),
+                        offerMostWorthMaking.getValue().getKey());
+                break;
+            case 2 : //Mortgage the property with the highest value from mortaging.
+                super.mortgageProperty(spaceMostWorthMortgaging.getValue());
+                break;
+            case 3 : //Sell house on the property where it would have most value.
+                super.returnHouse(houseMostWorthSelling.getValue(), 1);
+                break;
+            case 4 : //UnMortgage a property which gives the highest value.
+                super.unmortgageProperty(spaceMostWorthUnMortgaging.getValue());
+                break;
+        }
+        return false;
+    }
+    
+    private int randomChoice(int numberOfOptions) {
+        Random random = new Random();
+        int choiceNumber = random.nextInt(numberOfOptions);
+        return choiceNumber;
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        List<Double> resultsOfMove = new ArrayList();
+        //Establish the 3 options.
+        //Results of doing nothing
+        double currentResults 
+                = moveEvaluator.getThisPlayersResults();
+        resultsOfMove.add(currentResults);
+        //Use a get out of jail card.
+        Card getOutofJailCard = this.useGetOutOfJailCard();
+        if (getOutofJailCard != null) {
+            double usedGetOutOfJailCard 
+                    = moveEvaluator.getThisPlayersResults();
+            resultsOfMove.add(usedGetOutOfJailCard);
+            //Resets it back to normal.
+            this.reverseGetOutOfJailCard(getOutofJailCard);
+        } else {
+            resultsOfMove.add(TDInputGenerator.BAD_OUTPUT_NUM);
+        }
+        //Pay the $50.
+        if (this.optionalMoneyChange(-50)) {
+            this.setInJail(false);
+            double payToGetOut 
+                    = moveEvaluator.getThisPlayersResults(); 
+            resultsOfMove.add(payToGetOut);
+            //Need to reset this once the results have been got.
+            this.optionalMoneyChange(50);
+            this.setInJail(true);
+        } else {
+            resultsOfMove.add(TDInputGenerator.BAD_OUTPUT_NUM);
+        }
+        //Try adding a house.
+        Map.Entry<Double,Site> bestSiteForHouse 
+                = moveEvaluator.getPropertyMostWorthBuyingHouseOn(this);
+        //Only if this is the best choice.
+        if (bestSiteForHouse != null) {
+            resultsOfMove.add(
+                moveEvaluator.getResultsOfBuyingHouse
+                    (bestSiteForHouse.getValue(), this, this));
+        } else {
+            resultsOfMove.add(TDInputGenerator.BAD_OUTPUT_NUM);
+        }
+        /**
+         * Selects and returns the appropriate action for the player based
+         * on which of the avaliable results gave the best probability of 
+         * winning.
+         */
+        switch(moveEvaluator.pickFromResults(resultsOfMove).getKey()) {
+            //Roll to leave.
+            case 0 : 
+                int diceRoll = this.rollToLeaveJail();
+                //Returns -1 if a double isn't rolled.
+                if (diceRoll == -1) {
+                    return Player.STILL_IN_JAIL_TURN_OVER;
+                } else {
+                    return diceRoll;
+                }
+            //Use get out of jail card.
+            case 1 : 
+                if (this.useGetOutOfJailCard() != null) {
+                    return Player.rollDice();
+                } else {
+                    //Don't have a get out of jail card.
+                    return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+                }
+            //Pay to leave jail.
+            case 2 : 
+                if (this.payToLeaveJail()) {
+                    return Player.rollDice();
+                } else {
+                    return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+                }
+            //If buying a house is the best option add a house to the site
+            //where it would be most valuable.
+            case 3 : 
+                super.addHouse(bestSiteForHouse.getValue());
+                return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+            //No valid action selected.
+            default : 
+                System.err.println("No valid option selected from jail for"
+                        + " TD AI " + this.getNumber());
+                return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+            
+        }
+    }
+    
+    /**
+     * Ask player if they want to buy a specific property.
+     * @param property to ask about.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerIfTheyWantToBuyProperty(Space property) {
+        //A list used to store all results.
+        List<Double> allResults = new ArrayList();
+        //Gets a copy of the results of not doing anything.
+        double resultsWithoutBuying =  moveEvaluator.getThisPlayersResults();
+        allResults.add(resultsWithoutBuying);
+        //Gets a copy of the results when the property is bought.
+        allResults.add(
+                moveEvaluator.getResultsOfBuyingProperty(property, property.getIntialCost(),
+                this, this));
+        //If the best result is 0 (the first one), it is best for the player
+        //not to buy the property. Else if it is the second one, it is best
+        //for them to buy the property.
+        switch(moveEvaluator.pickFromResults(allResults).getKey()) {
+            case 0 : return false;
+            case 1 :
+                super.buyProperty(property);
+                changePreviousInputsToCurrentInputs();
+                return true;
+                //There are only two options so default should never be reached
+                //except in the case of an error.
+            default : System.err.println("invalid option selected when"
+                    + " player asked if they want to buy the property.");
+                    return false;
+        }
+    }
+    
+    /**
+     * Alerts the TD Player they have bought a property so the last set of
+     * inputs can be updated.
+     */
+    public void changePreviousInputsToCurrentInputs() {
+        this.previousInputs = inputGen.getCurrentInputs(this.getNumber());
+    }
+    
+     /**
+     * Assesses an offer made by another player and accepts it if the AI
+     * believes it is an acceptable offer.
+     * @param offer made by the other player.
+     * @param playerOffering the player making the offer.
+     * @return true if player accepts the offer.
+     */
+    @Override
+    public boolean assessAnOffer(DealOffer offer, Player playerOffering) {
+        List<Double> results = new ArrayList();
+        //Adds the results of not accepting the offer to the list.
+        results.add(moveEvaluator.getThisPlayersResults());
+        //Adds the results of accepting the offer to the list.
+        results.add(moveEvaluator.getValueOfOffer(offer, this, playerOffering));
+        if (moveEvaluator.pickFromResults(results).getKey() == 1) {
+            //If the best option is accepting the offer then accept it.
+            acceptDealFromPlayer(offer, playerOffering);
+            this.changePreviousInputsToCurrentInputs();
+            GameStats.addDealAccepted(this.getNumber(), offer);
+            return true;
+        }
+        //If the offer isn't worth accepting then nothing needs to happen.
+        return false;
+    }
+    
+    /**
+     * Note: for the time being offers won't include get out of jail cards.
+     * Note: at the moment, only monetary offers are made.
+     */
+    public void makeAnOfferToAnotherPlayer(DealOffer dealOffer,
+            Player playerToMakeOfferTo) {
+        playerToMakeOfferTo.assessAnOffer(dealOffer, this);
+        GameStats.addDealOffered(this.getNumber(), dealOffer);
+    }
+    
+    /**
+     * The player is asked how much they want to bid for a property. The TD
+     * Player examines the results of him and other players winning the property
+     * for the next bid increment amount. If a better result is provided by
+     * the AI bidding on the property, it does so, otherwise it leaves the
+     * bidding process.
+     * @param property to bid on.
+     * @param minimumBid minimum amount the player can bid.
+     * @param playersInTheProcess other players in the bidding process.
+     * @return the amount the player wants to bid.
+     */
+    @Override
+    public int makeABid(Space property, int minimumBid,
+            List<Player> playersInTheProcess) {
+        int newMinBid = minimumBid + TDMoveEvaluator.CASH_INCREMENTS;
+        //Leave the bidding process if the player hasn't got enough to make
+        //a bid.
+        if (newMinBid > this.getMoney()) {
+            return Player.LEAVE_BIDDING_PROCESS;
+        }
+        double resultsOfThisPlayerBuying = 
+                moveEvaluator.getResultsOfBuyingProperty(property, newMinBid, this,
+                this);
+        //Gets the results of all players in the process getting the property
+        //for the minimum bid.
+        List<Double> resultsOfOthersBuying = new ArrayList();
+        for (Player player : playersInTheProcess) {
+            resultsOfOthersBuying.add(
+                    moveEvaluator.getResultsOfBuyingProperty(property, newMinBid, player,
+                    this));
+        }
+        //Get the result which maximises this players payoff.
+        
+        //The player should leave the bidding process if the payoff from
+        //any other player receiving the property is worse than his own.
+        for (Double resultOfOtherBuying : resultsOfOthersBuying) {
+            if (resultOfOtherBuying < resultsOfThisPlayerBuying) {
+                return newMinBid; 
+            }
+        }
+        return Player.LEAVE_BIDDING_PROCESS;  
+    }
+    
+    /**
+     * The AI considers the value of owning another house/hotel on one of its
+     * properties. If this is more than the minimum bid the AI will place a bid
+     * equal to this on the property.
+     * @param minBid minimum amount that can be bid
+     * @param isHouse true if bidding on a house, false if its a hotel.
+     * @param playersInProcess a List of the players still in the bidding process.
+     * @return The amount to bid
+     */
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse, 
+            List<Player> playersInProcess) {
+        int newMinBid = minBid + TDMoveEvaluator.CASH_INCREMENTS;
+        //Leave the bidding process if the player hasn't got enough to make
+        //a bid.
+        if (newMinBid > this.getMoney()) {
+            return Player.LEAVE_BIDDING_PROCESS;
+        }
+        //If player doesn't own any propertys worth buying a property on there
+        //is no reason for this to happen.
+        double currentPlayerResults 
+                = moveEvaluator.getThisPlayersResults();
+        Map.Entry<Double, Site> propertyMostWorthBuyingHouseOn =
+                moveEvaluator.getPropertyMostWorthBuyingHouseOn(this);
+        if (propertyMostWorthBuyingHouseOn.getKey() > currentPlayerResults) {
+            Site bestSiteToBuildOn = propertyMostWorthBuyingHouseOn.getValue();
+            double resultsOfThisPlayerBuyingHouse = moveEvaluator
+                    .getResultsOfBuyingHouse(bestSiteToBuildOn, this, this);
+            //Gets the results of all players in the process getting the house
+            //for the minimum bid. 
+            List<Double> resultsOfOthersBuying = new ArrayList();
+            for (Player player : playersInProcess) {
+                Site otherPlayersBestSiteToBuildOn 
+                        = moveEvaluator.getPropertyMostWorthBuyingHouseOn(player).getValue();
+                double resultsOfOttherPlayerGettingHouse 
+                        = moveEvaluator.getResultsOfBuyingHouse
+                        (otherPlayersBestSiteToBuildOn, player, this);
+                resultsOfOthersBuying.add(resultsOfOttherPlayerGettingHouse);
+            }
+            //If the result of any player owning the house for the minbid is 
+            //less than this player winning the auction then the player should
+            //bid.
+            for (double resultOfOtherBuying : resultsOfOthersBuying) {
+                if (resultOfOtherBuying < resultsOfThisPlayerBuyingHouse) {
+                    return newMinBid; 
+                }
+            }
+        }
+        return Player.LEAVE_BIDDING_PROCESS;  
+    }
+    
+    /**
+     * The AI picks between paying the mortgage + interest or just paying the
+     * interest.
+     * @param properties 
+     */
+    @Override
+    public void receiveProperty(List<Space> properties) {
+        //Compare value of paying mortgage and interest to that of just paying
+        //the interest for each property.
+        for (Space property : properties) {
+            property.setOwner(this);
+            List<Double> unmortgageOrNot = new ArrayList();
+            //Add results of unmortgaging the property.
+            unmortgageOrNot.add(
+                    moveEvaluator.getResultsOfUnMortgagingProperty(property,this));
+            //Otherwise only the mortgage repayment rate is payed.
+            this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                    Bank.getInstance());
+            unmortgageOrNot.add(moveEvaluator.getThisPlayersResults());
+            //Set inputs back.
+            this.optionalMoneyChange(property.getMortgageRepaymentRate());
+            if (moveEvaluator.pickFromResults(unmortgageOrNot).getKey() == 0) {
+                //0 means chosen to pay for property.
+                super.unmortgageProperty(property);
+            } else {
+                this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                        Bank.getInstance());
+            }
+        }
+        this.changePreviousInputsToCurrentInputs();
+    }
+    
+    /**
+     * The AI selects the property most worth building a house on.
+     * @return Site most worth building a house on.
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        return moveEvaluator.getPropertyMostWorthBuyingHouseOn(this).getValue();
+    }
+    
+    /**
+     * Mortgages the property seen by the AI as that which is most worth
+     * mortgaging. Used when the AI is forced to mortgage some properties.
+     */
+    @Override
+    public void mortgageProperties() {
+        if (this.getMortgagableProperties().size() > 0) {
+            super.mortgageProperty(moveEvaluator.getPropertyMostWorthMortgaging()
+                    .getValue());
+        }
+    }
+    
+     /**
+     * Sells a house on the property most worth selling a house on.
+     */
+    @Override
+    public void sellHouses() {
+        //Should only happen if the player has houses they can sell.
+        if (!super.getSitesWithHousesWhichCanBeSold().isEmpty()) {
+            super.returnHouse(moveEvaluator.getPropertyMostWorthSellingHouseOn()
+                    .getValue(), 1);
+        } else {
+            System.err.println("The player doesn't have any houses to sell");
+        }
+    }
+    
+     /**
+     * TD Player updates the network with the appropriate win values.
+     */
+    @Override
+    public void hasWon() {
+        GameStats.addWinningValue(this.getValueOfAllAssets());
+        critic.generalize(previousInputs, true);
+    }
+    
+    /**
+     * Informs the other players they have lost and generalizes appropriately.
+     */
+    @Override
+    public void hasLost() {
+        GameStats.addLoosingValue(this.getValueOfAllAssets());
+        critic.generalize(previousInputs, false);
+    }
+
+    
+/**
+ * Private methods for ease of use.
+ */
+    /**
+     * As I still need to populate the lists used in the askPlayerMoveOptions()
+     * method, this adds the badOutputNumber to the list when the entry is null.
+     * This situation occurs when the current results are better than the 
+     * results of attempting an option and so the AI shouldn't perform them.
+     * The entry results are added to the list.
+     * @param entry to add to list.
+     * @param list to add to.
+     * @return A List version of the results.
+     */
+    private List<Double> addKeyOrBadOutputNo(Map.Entry entry,
+            List<Double> list) {
+        if (entry != null) {
+            if (entry.getKey().getClass().equals(Double.class)) {
+                Double d = (Double)entry.getKey();
+                list.add(d);
+            } else {
+                System.err.println("Bad use of addKeyOrBadOutputNo method "
+                        + "in TD Player. Should be a map entry with a double "
+                        + "key value.");
+                System.exit(0);
+            }
+        } else {
+            list.add(TDInputGenerator.BAD_OUTPUT_NUM);
+        }
+        return list;
+    }
+    
+    public static List<List<Space> > getAllCombinationsOfSpaces(Player player) {
+        if (player.getProperties().isEmpty()) {
+            return null;
+        }
+        List<Space > propertyList = player.getProperties();
+        List<List<Integer> > possibleCombos = new ArrayList();
+        int outOf = propertyList.size();
+        List<int[][]> combinations = new ArrayList();
+        
+        for (int num = 1; num < outOf; num++) {
+            
+            combinations.add(count(num,outOf));
+        }
+        
+        for (int i = 0; i < combinations.size(); i++) {
+            for (int k = 0; k < combinations.get(i).length; k++)
+            {
+                List<Integer> oneCombo = new ArrayList();
+                for (int j = 0; j < combinations.get(i)[k].length; j++)
+                {
+                    oneCombo.add(combinations.get(i)[k][j]);
+                }
+                possibleCombos.add(oneCombo);
+            }
+        }
+        
+        List<List<Space>> fullComboList = new ArrayList();
+        for (int i = 0; i < possibleCombos.size(); i++) {
+            List<Space> fullCombo = new ArrayList();
+            for (int j = 0; j < possibleCombos.get(i).size(); j++) {
+                fullCombo.add(propertyList.get(possibleCombos.get(i).get(j)));
+            }
+            fullComboList.add(fullCombo);
+        }
+        
+        for (int i = 0; i < fullComboList.size(); i++) {
+            System.out.print("Full combo " + i + " : ");
+            for (int j = 0; j < fullComboList.get(i).size(); j++) {
+                System.out.print(fullComboList.get(i).get(j).getName() + " ");
+            }
+            System.out.println();
+        }
+        return fullComboList;
+    }
+    
+    /**
+     * Methods created by Sourabh Bhat (heySourabh@gmail.com) for calculating
+     * the different combinations that a different amount of numbers can sit in.
+     */
+    // author: Sourabh Bhat (heySourabh@gmail.com)
+    public static int[][] count(int num, int outOf)
+    {
+        int[][] combinations = getCombinations(num, outOf);
+        return combinations;
+    }
+
+    private static int[][] getCombinations(int num, int outOf)
+    {
+        int possibilities = get_nCr(outOf, num);
+        System.out.println("Possibilies:" + possibilities);
+        int[][] combinations = new int[possibilities][num];
+        int arrayPointer = 0;
+
+        int[] counter = new int[num];
+
+        for (int i = 0; i < num; i++)
+        {
+            counter[i] = i;
+        }
+        breakLoop: while (true)
+        {
+            // Initializing part
+            for (int i = 1; i < num; i++)
+            {
+                if (counter[i] >= outOf - (num - 1 - i))
+                    counter[i] = counter[i - 1] + 1;
+            }
+
+            // Testing part
+            for (int i = 0; i < num; i++)
+            {
+                if (counter[i] < outOf)
+                {
+                    continue;
+                } else
+                {
+                    break breakLoop;
+                }
+            }
+
+            // Innermost part
+            combinations[arrayPointer] = counter.clone();
+            arrayPointer++;
+
+            // Incrementing part
+            counter[num - 1]++;
+            for (int i = num - 1; i >= 1; i--)
+            {
+                if (counter[i] >= outOf - (num - 1 - i))
+                    counter[i - 1]++;
+            }
+        }
+
+        return combinations;
+    }
+
+    private static int get_nCr(int n, int r)
+    {
+        if(r > n)
+        {
+            throw new ArithmeticException("r is greater then n");
+        }
+        BigInteger numerator = new BigInteger("1");
+        BigInteger denominator = new BigInteger("1");
+        for (int i = n; i >= r + 1; i--)
+        {
+            String iString = "" + i;
+            BigInteger iBigInt = new BigInteger(iString);
+            numerator = numerator.multiply(iBigInt);
+        }
+        for (int i = 2; i <= n - r; i++)
+        {
+            String iString = "" + i;
+            BigInteger iBigInt = new BigInteger(iString);
+            denominator = denominator.multiply(iBigInt);
+        }
+
+        BigInteger result = numerator.divide(denominator);
+        double resultDouble = result.doubleValue();
+        
+        return (int)resultDouble;
+    }
+    
+}
+
+/**
+ * Old methods, no longer in use.
+ */
+//      No Longer used. Colour is now stored as a number to improve performance.  
+//     /**
+//     * Gets the associated number of a property group from its color.
+//     * @param color of the property
+//     * @return number representing this property.
+//     */
+//    protected int convertColorToInt(Color color) {
+//        if (color.equals(Board.BROWN)) {
+//            return 0;
+//        } else {
+//            if (color.equals(Board.LIGHT_BLUE)) {
+//                return 1;
+//            } else {
+//                if (color.equals(Board.PINK)) {
+//                    return 2;
+//                } else {
+//                    if (color.equals(Board.ORANGE)) {
+//                        return 3;
+//                    } else {
+//                        if (color.equals(Board.RED)) {
+//                            return 4;
+//                        } else {
+//                            if (color.equals(Board.YELLOW)) {
+//                                return 5;
+//                            } else {
+//                                if (color.equals(Board.GREEN)) {
+//                                    return 6;
+//                                } else {
+//                                    if (color.equals(Board.BLUE)) {
+//                                        return 7;
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        System.err.println("Not a valid color");
+//        return -1;
+//    }
+//
+//    
+//    /**
+//     * The player is asked how much they would bid for a property.
+//     * @param property to bid for.
+//     * @param minimumBid the minimum the player can bid.
+//     * @return how much the player is willing to bid for a property.
+//     */
+//    @Override
+//    public int makeABid(Space property, int minimumBid) {
+//        List<double[]> buyPropertyOrNot = new ArrayList();
+//        //Adds the current results to the list to choose from.
+//        buyPropertyOrNot.add(getCurrentResults());
+//        //Adds the results of buying a property to the list to choose from.
+//        buyPropertyOrNot.add(
+//                getResultsOfBuyingProperty(property, property.getIntialCost(),
+//                this));
+//        //Gets the best results from the two.
+//        Map.Entry<Integer, Double> result =
+//                this.pickFromResults(buyPropertyOrNot, this.number);
+//        //Gets the money the player is willing to offer for the property.
+//        double moneyToOffer =
+//                    getMoneyToOfferForResult(buyPropertyOrNot.get(result.getKey()),
+//                this.getNumber());
+//        //If either the result chosen is the one where the property isn't
+//        //bought or the money to offer is less than the minimum bid, the player
+//        //leaves the process. Otherwise the amount to offer is returned.
+//        if (result.getKey() == 0
+//                || moneyToOffer < minimumBid) { //0 means the current result was better.
+//            return Player.LEAVE_BIDDING_PROCESS;
+//        } else {
+//            return (int)Math.round(moneyToOffer);
+//        }
+//    }
+//    /**
+//     * The AI considers the value of owning another house/hotel on one of its
+//     * properties. If this is more than the minimum bid the AI will place a bid
+//     * equal to this on the property.
+//     * @param minBid minimum amount that can be bid
+//     * @param isHouse true if bidding on a house, false if its a hotel.
+//     * @return The amount to bid
+//     */
+//    @Override
+//    public int makeABidOnHouse(int minBid, boolean isHouse) {
+//        //Gets the site most worth buying a house on.
+//        Site siteWorthBuyingHouseOn 
+//                = this.getPropertyMostWorthBuyingHouseOn(this).getValue();
+//        //Gets the results of buying a house on this.
+//        double[] resultsOfBuyingAHouseOnThis 
+//                = this.getResultsOfBuyingHouse(siteWorthBuyingHouseOn, this);
+//        //Gets the amount to offer for this even.
+//        double amountToOffer = 
+//                getMoneyToOfferForResult(resultsOfBuyingAHouseOnThis, this.getNumber());
+//        //If the amount to offer is more than the minimum bid return the amount
+//        //to offer.
+//        if (amountToOffer > minBid) {
+//            return (int)Math.round(amountToOffer);
+//        }
+//        //Otherwise the player decides to leave the process.
+//        return Player.LEAVE_BIDDING_PROCESS;
+//    }
+//    
+//    /**
+//     * Gets the money to offer for a given result. If the money to offer
+//     * is more than the player has then the amount to offer becomes the amount
+//     * of money the player has.
+//     * @param results to get money to offer from.
+//     * @return money to offer to obtain results
+//     */
+//    public double getMoneyToOfferForResult(double[] results, int playerNumber) {
+//        double moneyToOffer = 
+//                results[playerNumber + this.getMoneyOutputOffset()];
+//        if (moneyToOffer > this.getMoney()) {
+//            moneyToOffer = this.getMoney();
+//        }
+//        return moneyToOffer;
+//    }
+//        /**
+//     * Gets the money output offset used by the TD AI. This is used to find
+//     * where the output for values of things starts for the AI.
+//     * @return money output offset.
+//     */
+//    public int getMoneyOutputOffset() {
+//        return getNumOutputNodes()/2;
+//    }    
+//}

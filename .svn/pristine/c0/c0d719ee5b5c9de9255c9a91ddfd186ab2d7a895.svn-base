@@ -1,0 +1,83 @@
+package monopoly;
+
+import Model.Players.NeuralNetwork.CriticPackage.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+
+/**
+ * Class used to feed database results to the network instead of learning from
+ * other methods. This is much faster but generally produces slightly worse results
+ * but the much shorter time may make up for this.
+ * @author Chris Berry
+ */
+public class FeedResultsToNetwork {
+
+    /**
+     * Feeds the results found in the MoveDB.csv file to the network so it
+     * may learn from the experience of others.
+     * @param networkToTrain network to train with the results.
+     * @return the number of games experienced by the network (this is for each
+     * player so a 4 player game would lead to a result of 20,000 for 5,000
+     * total games).
+     */
+    public static int feedResultsToNetwork(Critic networkToTrain) {
+        BufferedReader reader = null;
+        int gameNumber = 0;
+        try {
+            reader = new BufferedReader(new FileReader("MoveDB.csv"));
+        } catch (FileNotFoundException f) {
+            System.err.println(f);
+        }
+        String line = null;
+        try {
+            double[] previousInputs = null;
+            double[] currentInputs = null;
+            int feedNumber = 0;
+            while ((line = reader.readLine()) != null) {
+                String[] splitLine = line.split(",");
+                if (splitLine[0].equals("End")) {
+                    gameNumber++;
+                    System.out.println("At game number: " + gameNumber);
+                    boolean won = Boolean.parseBoolean(splitLine[1]);
+                    boolean gameAtMaxRounds = Boolean.parseBoolean(splitLine[2]);
+                    String nextLine = reader.readLine();
+                    if (nextLine != null) {
+                        String[] lastInputsStr = nextLine.split(",");
+                        double[] lastInputs = new double[lastInputsStr.length];
+                        for (int i = 0; i < lastInputsStr.length; i++) {
+                            lastInputs[i] = Double.parseDouble(lastInputsStr[i]);
+                        }
+                        if (networkToTrain.getClass().equals(CriticWinTypeMatters.class)) {
+                            CriticWinTypeMatters winTypeMatters = (CriticWinTypeMatters) networkToTrain;
+                            winTypeMatters.generalizeFromDB(lastInputs, won, gameAtMaxRounds);
+                        } else {
+                            networkToTrain.generalize(previousInputs, won);
+                        }
+                        currentInputs = null;
+                    }
+                } else {
+                    if (currentInputs == null) {
+                        currentInputs = new double[splitLine.length];
+                        for (int i = 0; i < splitLine.length; i++) {
+                            currentInputs[i] = Double.parseDouble(splitLine[i]);
+                        }
+                        splitLine = reader.readLine().split(",");
+                    }
+                    previousInputs = currentInputs;
+                    for (int i = 0; i < splitLine.length; i++) {
+                        currentInputs[i] = Double.parseDouble(splitLine[i]);
+                    }
+                    double[] expected = networkToTrain.getGeneralizer().getEvaluator().evaluate(currentInputs);
+                    networkToTrain.generalizeFromDB(previousInputs, expected);
+                }
+                feedNumber++;
+            }
+        } catch (IOException e) {
+            System.err.println(e);
+        }
+        return gameNumber;
+    }
+    
+}

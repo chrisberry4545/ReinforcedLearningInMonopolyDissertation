@@ -1,0 +1,29 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Game;
+import Model.Players.Player;
+import Model.Spaces.SpaceEnums;
+
+/**
+ *
+ * @author chris
+ */
+public class GoToJail extends CardAction{
+    
+    public GoToJail() {
+        
+    }
+    
+    @Override
+    public void performAction(Player player) {
+        //Move player to jail and collect no money.
+        Game.getInstance().movePlayerToSpaceNumber(player,
+                SpaceEnums.JAIL_NUMBER, false);
+        player.setInJail(true);
+    }
+    
+}

@@ -1,0 +1,521 @@
+package Model.Players;
+
+import Model.Bank;
+import Model.DealOffer;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import Model.Board;
+import java.util.List;
+import Model.Players.NeuralNetwork.*;
+import java.awt.Color;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+
+/**
+ *
+ * @author chris
+ */
+public class FirstTDPlayer extends AI {
+    
+    private Board board;
+    private Evaluator evaluator;
+    private int numInputNodes = 101;
+    private int numHiddenNodes = 44;
+    private int numOutputNodes = 6;
+    
+    private double badOutputNo = -100000;
+    /**
+     * This value gets returned from evaluators functions if the player cannot
+     * make this move. It is filled with highly negative values so the AI
+     * will not play these choices.
+     */
+    private double[] badOutput = {badOutputNo,badOutputNo,badOutputNo,
+        badOutputNo,badOutputNo,badOutputNo};
+    
+    public static final int MONEY_OUTCOME_MULTIPLYER = 1000;
+    
+    public FirstTDPlayer(int setToken, Board currentBoard) {
+        super(setToken);
+        board = currentBoard;
+        this.evaluator = new AbstractEvaluator(0.5, numInputNodes, 
+                numHiddenNodes, numOutputNodes );
+    }
+    
+    /**
+     * Ask player if they want to buy the property.
+     * @param property to ask about.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerIfTheyWantToBuyProperty(Space property) {
+        List<double[]> allResults = new ArrayList();
+        double[] inputsWithoutBuying = getCurrentResults();
+        double[] resultsWithoutBuying = evaluator.evaluate(inputsWithoutBuying);
+        allResults.add(resultsWithoutBuying);
+        allResults.add(getResultsOfBuyingProperty(property));
+        switch(pickFromResults(allResults, this.token).getKey()) {
+            case 0 : return false;
+            case 1 : return true;
+            default : System.err.println("invalid option selected when"
+                    + " player asked if they want to buy the property.");
+                    return false;
+        }
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        List<double[]> results = new ArrayList();
+        //Establish the 3 options.
+        //Attempt to roll a double (i.e do nothing).
+        double[] attemptToRoll = getCurrentResults();
+        results.add(attemptToRoll);
+        //Use a get out of jail card.
+        if (this.useGetOutOfJailCard()) {
+            double[] usedGetOutOfJailCard = getCurrentResults();
+            results.add(usedGetOutOfJailCard);
+            this.reverseGetOutOfJailCard();
+        }
+        //Pay the $50.
+        if (this.optionalMoneyChange(-50)) {
+            double[] payToGetOut = getCurrentResults(); 
+            results.add(payToGetOut);
+        }
+        switch(pickFromResults(results, this.token).getKey()) {
+            case 0 : return Player.ROLL_TO_LEAVE;
+            case 1 : return Player.USE_GET_OUT_OF_JAIL_CARD;
+            case 2 : return Player.PAY_TO_LEAVE;
+            default : 
+                System.err.println("No valid option selected from jail");
+                return Player.ROLL_TO_LEAVE;
+        }
+    }
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    @Override
+    public boolean askPlayerMoveOptions() {
+        //Process each of the players possible moves and see if it is worth
+        //carrying them out.
+        //Check if buying any houses is worth it.
+        Map.Entry<Double, Site>
+                houseMostWorthBuying = getPropertyMostWorthBuyingHouseOn();
+        //Check if offering a property is worth it.
+        //Needs doing.
+        //Check if mortgaging a property is worth it.
+        Map.Entry<Double, Space>
+                spaceMostWorthMortgaging = getPropertyMostWorthMorgaging();
+        //Check if selling a house is worth it.
+        Map.Entry<Double, Site>
+                houseMostWorthSelling = getPropertyMostWorthSellingHouseOn();
+        //Check if buying back a mortgaged property is worth it.
+        Map.Entry<Double, Space>
+                spaceMostWorthUnMortgaging = getPropertyMostWorthUnMorgaging();
+        //Compare these results and find the best option.
+        List<Double> choiceList = new ArrayList();
+        choiceList.add(houseMostWorthBuying.getKey());
+        choiceList.add(spaceMostWorthMortgaging.getKey());
+        choiceList.add(houseMostWorthSelling.getKey());
+        choiceList.add(spaceMostWorthUnMortgaging.getKey());
+        double bestChoice = 0;
+        int choiceNumber = -1;
+        for (int i = 0; i < choiceList.size(); i++) {
+            if (choiceList.get(i) > bestChoice) {
+                bestChoice = choiceList.get(i);
+                choiceNumber = i;
+            }
+        }
+        switch (choiceNumber) {
+            case -1 : //The case where none of the choices appear to yield a postive
+                //result. In this case the AI would choose to roll the dice and perform
+                //no further actions.
+                return true;
+            case 0 : //Add a house to the most valued property. 
+                houseMostWorthBuying.getValue().addHouse();
+                break;
+            case 1 : //Mortgage the property with the highest value from mortaging.
+                spaceMostWorthMortgaging.getValue().mortgageProperty();
+                break;
+            case 2 : //Sell house on the property where it would have most value.
+                houseMostWorthSelling.getValue().returnHouses(1);
+                break;
+            case 3 : //UnMortgage a property which gives the highest value.
+                spaceMostWorthUnMortgaging.getValue().unMortgageProperty();
+                break;
+        }
+        return false;
+    }
+    
+    private Map.Entry<Double, Site> getPropertyMostWorthBuyingHouseOn() {
+        List<double[]> resultsForBuyingHouse = new ArrayList();
+        resultsForBuyingHouse.add(getCurrentResults());
+        List<Space> sitesWhichCanBeBuiltOn = this.getSitesWhichCanBeBuiltOn();
+        for (Space space : sitesWhichCanBeBuiltOn) {
+            Site site = (Site)space;
+            resultsForBuyingHouse.add(this.getResultsOfBuyingHouse(site));
+        }
+        Map.Entry<Integer, Double> result = 
+                pickFromResults(resultsForBuyingHouse, this.getToken());
+        if(result.getKey() != 0) { //It's worth buying a house
+            Map<Double, Site> resultMap = new HashMap();
+            Site bestSite =(Site)sitesWhichCanBeBuiltOn.get(result.getKey());
+            resultMap.put(result.getValue(), bestSite);
+            return generateSiteMapEntry(resultMap);
+        }
+        return null;
+    }
+    
+    private Map.Entry<Double, Site> getPropertyMostWorthSellingHouseOn() {
+        List<double[]> resultsForSellingHouse = new ArrayList();
+        resultsForSellingHouse.add(getCurrentResults());
+        List<Space> sitesWhichCanBeBuiltOn = this.getSitesWhichCanBeBuiltOn();
+        for (Space space : sitesWhichCanBeBuiltOn) {
+            Site site = (Site)space;
+            resultsForSellingHouse.add(this.getResultsOfSellingHouse(site));
+        }
+        Map.Entry<Integer, Double> result = 
+                pickFromResults(resultsForSellingHouse, this.getToken());
+        if(result.getKey() != 0) { //It's worth selling a house
+            Map<Double, Site> resultMap = new HashMap();
+            Site bestSite =(Site)sitesWhichCanBeBuiltOn.get(result.getKey());
+            resultMap.put(result.getValue(), bestSite);
+            return generateSiteMapEntry(resultMap);
+        }
+        return null;
+    }
+    
+    private Map.Entry<Double, Space> getPropertyMostWorthMorgaging() {
+        List<double[]> resultsForMortgaging = new ArrayList();
+        resultsForMortgaging.add(getCurrentResults());
+        List<Space> sitesWhichCanMortgage = this.getMortgagableProperties();
+        for (Space space : sitesWhichCanMortgage) {
+            resultsForMortgaging.add(this.getResultsOfMortgagingProperty(space));
+        }
+        Map.Entry<Integer, Double> result =
+                pickFromResults(resultsForMortgaging, this.getToken());
+        if (result.getKey() != 0) {
+            Map<Double, Space> resultMap = new HashMap();
+            Space bestProperty = sitesWhichCanMortgage.get(result.getKey());
+            resultMap.put(result.getValue(), bestProperty);
+            return generateSpaceMapEntry(resultMap);   
+        }
+        return null;
+    }
+    
+    private Map.Entry<Double, Space> getPropertyMostWorthUnMorgaging() {
+        List<double[]> choice = new ArrayList();
+        choice.add(getCurrentResults());
+        List<Space> sitesWhichCanBeUnMortgage = this.getMortgagedProperties();
+        for (Space space : sitesWhichCanBeUnMortgage) {
+            double[] resultsOfUnMortgaging
+                    = this.getResultsOfUnMortgagingProperty(space);
+            choice.add(resultsOfUnMortgaging);
+        }
+        Map.Entry<Integer, Double> result =
+                pickFromResults(choice, this.getToken());
+        if (result.getKey() != 0) {
+            Map<Double, Space> resultMap = new HashMap();
+            Space bestProperty = sitesWhichCanBeUnMortgage.get(result.getKey());
+            resultMap.put(result.getValue(), bestProperty);
+            return generateSpaceMapEntry(resultMap);   
+        }
+        return null;
+    }
+    
+    private Map.Entry<Double,Site> generateSiteMapEntry(Map<Double, Site> map) {
+        for (Map.Entry firstEntry : map.entrySet()) {
+                return firstEntry;
+        }
+        return null;
+    }
+    
+    private Map.Entry<Double,Space> generateSpaceMapEntry(Map<Double, Space> map) {
+        for (Map.Entry firstEntry : map.entrySet()) {
+            return firstEntry;
+        }
+        return null;
+    }
+    
+    @Override
+    public void makeAnOfferToAnotherPlayer() {
+        
+    }
+    
+    @Override
+    public void assessAnOffer(DealOffer offer, Player playerOffering) {
+        
+    }
+    
+    /**
+     * Sells a house on the property most worth selling a house on.
+     */
+    @Override
+    public void sellHouses() {
+        getPropertyMostWorthSellingHouseOn().getValue().returnHouses(1);
+    }
+    
+    @Override
+    public int makeABid(Space property, int minimumBid) {
+        List<double[]> allResults = new ArrayList();
+        allResults.add(getCurrentResults());
+        allResults.add(getResultsOfBuyingProperty(property));
+        Map.Entry<Integer, Double> result 
+                = pickFromResults(allResults, this.token);
+        if (result.getValue() < minimumBid 
+                || result.getKey() == 0) { //0 means the current result was better.
+            return Player.LEAVE_BIDDING_PROCESS;
+        } else {
+            return (int)Math.round(result.getValue());
+        }
+    }
+    
+    /**
+     * THIS IS NOT YET IMPLEMENTED.
+     * @param minBid
+     * @param isHouse
+     * @return Th
+     */
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse) {
+        return Player.LEAVE_BIDDING_PROCESS;
+    }
+    
+    /**
+     * The AI picks between paying the mortgage + interest or just paying the
+     * interest.
+     * @param properties 
+     */
+    @Override
+    public void receiveProperty(List<Space> properties) {
+        //Compare value of paying mortgage and interest to that of just paying
+        //the interest for each property.
+        for (Space property : properties) {
+            property.setOwner(this);
+            List<double[]> results = new ArrayList();
+            //Add results of unmortgaging the property.
+            results.add(getResultsOfUnMortgagingProperty(property));
+            //Otherwise only the mortgage repayment rate is payed.
+            this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                    Bank.getInstance());
+            results.add(getCurrentResults());
+            //Set inputs back.
+            this.optionalMoneyChange(property.getMortgageRepaymentRate());
+            if (pickFromResults(results, this.getToken()).getKey() == 0) {
+                //0 means chosen to pay for property.
+                property.unMortgageProperty();
+            } else {
+                this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                        Bank.getInstance());
+            }
+        }
+    }
+    
+    /**
+     * The AI selects the property most worth building a house on.
+     * @return Site most worth building a house on.
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        return this.getPropertyMostWorthBuyingHouseOn().getValue();
+    }
+    
+    /**
+     * Mortgages the property seen by the AI as that which is most worth
+     * mortgaging.
+     */
+    @Override
+    public void mortgageProperties() {
+        getPropertyMostWorthMorgaging().getValue().mortgageProperty();
+    }
+    
+    private double[] getCurrentResults() {
+        double[] inputs = new double[numInputNodes];
+        int inputNumber = 0;
+        //Add the nodes for the other players.
+        //There will always be 6 nodes for this.
+        List<Player> allPlayers = Game.getInstance().getPlayers();
+        for (int i = 0; i < 6; i++) {
+            if (allPlayers.size() > i) {
+                inputs[inputNumber] = allPlayers.get(i).getMoney()/1000;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //22 nodes representing properties.
+        for (Site site: board.getAllSites()) {
+            //Adds values for the color.
+            inputs[inputNumber] = convertColorToInt(site.getColor())/7;
+            inputNumber++;
+            //Adds values for owner.
+            if (site.getOwner() != null) {
+                inputs[inputNumber] =
+                    site.getOwner().getToken()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+            //Adds value for number of houses.
+            inputs[inputNumber] = site.getHouses()/Site.MAX_HOUSES;
+            inputNumber++;
+        }
+        //4 nodes representing stations.
+        for (Station station : board.getAllStations()) {
+            if (station.getOwner() != null) {
+                inputs[inputNumber] =
+                        station.getOwner().getToken()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //2 nodes representing utilies.
+        for (Utility utility : board.getAllUtilities()) {
+            if (utility.getOwner() != null) {
+                inputs[inputNumber] =
+                        utility.getOwner().getToken()/Game.MAX_PLAYERS;
+            } else {
+                inputs[inputNumber] = 0;
+            }
+            inputNumber++;
+        }
+        //1 node representing whether the player is in jail or not.
+        if (!this.inJail()) {
+            inputs[inputNumber] = 0;
+        } else {
+            inputs[inputNumber] = 1;
+        }
+        return evaluator.evaluate(inputs);
+    }
+    
+    private int convertColorToInt(Color color) {
+        if (color.equals(Board.BROWN)) {
+            return 0;
+        } else {
+            if (color.equals(Board.LIGHT_BLUE)) {
+                return 1;
+            } else {
+                if (color.equals(Board.PINK)) {
+                    return 2;
+                } else {
+                    if (color.equals(Board.ORANGE)) {
+                        return 3;
+                    } else {
+                        if (color.equals(Board.RED)) {
+                            return 4;
+                        } else {
+                            if (color.equals(Board.YELLOW)) {
+                                return 5;
+                            } else {
+                                if (color.equals(Board.GREEN)) {
+                                    return 6;
+                                } else {
+                                    if (color.equals(Board.BLUE)) {
+                                        return 7;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        System.err.println("Not a valid color");
+        return -1;
+    }
+    
+    public Map.Entry<Integer, Double> pickFromResults(List<double[]> results,
+            int playerNumber) {
+        Map<Integer, Double>  resultMap = new HashMap();
+        if (results.size() > 0) {
+            double winningResults = results.get(0)[playerNumber];
+            int currentWinningResult = 0;
+            for (int i = 1; i < results.size(); i++) {
+                if (results.get(i)[playerNumber] > winningResults) {
+                    winningResults = results.get(i)[playerNumber];
+                    currentWinningResult = i;
+                }
+            }
+            resultMap.put(currentWinningResult,
+                    results.get(currentWinningResult)[playerNumber] 
+                    * MONEY_OUTCOME_MULTIPLYER);
+            for (Map.Entry resultEntry : resultMap.entrySet()) {
+                return resultEntry;
+            }
+        } else {
+            System.err.println("Need at least one result to choose from");
+        }
+        return null;
+    }
+    
+    private double[] getResultsOfBuyingProperty(Space property) {
+        int cost = property.getIntialCost();
+        if (this.optionalMoneyChange(-cost)) {
+            Player currentOwner = property.getOwner();
+            property.setOwner(this);
+            double[] resultsWithBuying = getCurrentResults();
+            //Set all inputs back.
+            this.optionalMoneyChange(cost);
+            property.setOwner(currentOwner);
+            return resultsWithBuying;
+        }
+        return badOutput;
+    }
+    
+    private double[] getResultsOfBuyingHouse(Site property) {
+        int houseCost = property.getHouseCost();
+        if (property.addHouse() == Site.HOUSE_ADDED) {
+            double[] resultsWithBuying = getCurrentResults();
+            //Set all inputs back.
+            this.optionalMoneyChange(houseCost);
+            property.returnHousesForFree(1);
+            return resultsWithBuying;
+        }
+        return badOutput;
+    }
+    
+    private double[] getResultsOfSellingHouse(Site property) {
+        int houseCost = property.getHouseCost();
+        if (property.getHouses() > 0) {
+            property.returnHouses(1);
+            double[] resultsWithSelling = getCurrentResults();
+            //Set all inputs back.
+            this.optionalMoneyChange(houseCost/2);
+            property.addHouseForFree();
+            return resultsWithSelling;
+        }
+        return badOutput;
+    }
+    
+    private double[] getResultsOfMortgagingProperty(Space property) {
+        int mortgageRate = property.getMortgageRate();
+        property.mortgageProperty();
+        double[] results = getCurrentResults();
+        //Sets inputs back.
+        property.UnMortgageForFree();
+        this.optionalMoneyChange(-mortgageRate);
+        return results;
+    }
+    
+    private double[] getResultsOfUnMortgagingProperty(Space property) {
+        int mortgageRepayment = property.getMortgageRepaymentRate();
+        if (property.unMortgageProperty()) {
+            double[] results = getCurrentResults();
+            //Set inputs back.
+            property.mortgageProperty();
+            this.optionalMoneyChange(mortgageRepayment);
+            return results;
+        }
+        return badOutput;
+    }
+    
+}

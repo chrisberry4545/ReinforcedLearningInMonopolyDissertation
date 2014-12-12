@@ -1,0 +1,31 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class ChairmanOfTheBoard extends CardAction {
+   
+    private int amountToPayEachPlayer = 50;
+    
+    public ChairmanOfTheBoard() {
+        
+    }
+    
+    public void performAction(Player currentPlayer) {
+        for (Player otherPlayer : Game.getInstance().getPlayers()) {
+            if (!otherPlayer.equals(currentPlayer)) {
+                otherPlayer.optionalMoneyChange(amountToPayEachPlayer);
+                currentPlayer.forcedMoneyChange(-amountToPayEachPlayer,
+                        otherPlayer);
+            }
+        }
+    }
+}

@@ -1,0 +1,90 @@
+package Model.Spaces;
+
+import java.awt.Color;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Players.Player;
+
+/**
+ * Stores all of the site groups.
+ * @author chris
+ */
+public class SiteGroup {
+    
+    private static SiteGroup instance = null;
+    private static Map<Color, List<Site>> siteGroups = new HashMap();
+    
+    /**
+     * Only one instance of this class exists.
+     */
+    protected SiteGroup() {
+    }
+    
+    /**
+    * Returns an instance of the singleton class PropertyGroup
+    * @return ActionManager instance
+    */
+    public static SiteGroup getInstance() {
+        if (instance == null) {
+            instance = new SiteGroup();
+        }
+        return instance;
+    }
+    
+    public static void addSite(Site site) {
+        Color color = site.getColor();
+        if (siteGroups.containsKey(color)) {
+            //Already exists
+            siteGroups.get(color).add(site);
+        } else {
+            List sitesList = new ArrayList();
+            sitesList.add(site);
+            siteGroups.put(color, sitesList);
+        }
+    }
+    
+    /**
+     * Checks if other properties have enough houses to add house to the one
+     * specified.
+     * @param site which you want to add a house to.
+     * @return whether or not it's possible to add a house.
+     */
+    public static boolean otherPropertiesHaveEnoughHouses(Site site) {
+        Color color = site.getColor();
+        //Go through all the sites of the color and check everyone of them
+        //doesn't have less houses than the one the player wants to add
+        //a house to.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : siteGroups.get(color)) {
+            if (oneSite.getHouses() < houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Checks if a single player owns all the sites of a given color.
+     * Returns true if they are or false if they are not.
+     * @param color of site group.
+     * @return true if player owns all sites in the group.
+     */
+    public static boolean playerOwnsAMonopoly(Color color) {
+        Player p = siteGroups.get(color).get(0).getOwner();
+        for(Site eachSite : siteGroups.get(color)) {
+            if (p == null || eachSite.getOwner() == null
+                    || !p.equals(eachSite.getOwner())) {
+                //False is returned if any of the site owners in the color
+                //are different or there is no owner.
+                return false;
+            }
+        }
+        
+        //Otherwise all the site owners must be the same.
+        return true;
+        
+    }
+    
+}

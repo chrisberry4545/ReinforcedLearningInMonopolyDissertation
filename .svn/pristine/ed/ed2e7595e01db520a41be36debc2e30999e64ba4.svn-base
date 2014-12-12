@@ -1,0 +1,111 @@
+package Model.Players.NeuralNetwork;
+
+/**
+ * Adjust a learner's hypothesis based on its play against training data.
+ * 
+ * @author David J. Barnes (d.j.barnes@kent.ac.uk) 
+ * @version 2013.03.11
+ */
+public class Generalizer
+{
+    // The default learning rate.
+    private static final double DEFAULT_ALPHA = 0.1;
+    // The evaluator used to feed input to the network.
+    private Evaluator evaluator;
+    // The squared error between training and predicted values.
+    private double[] error_sq;
+    // The learning rate.
+    private double alpha;
+    // The current learning cycle.
+    private long cycle;
+    // The amount by which to reduce the value of alpha each time.
+    private double alphaDecline;
+
+    private boolean debug;
+    
+    /**
+     * Constructor for objects of class Generalizer.
+     * @param ev The evaluator.
+     * @param alpha The learning rate.
+     */
+    public Generalizer(Evaluator ev, double alpha)
+    {
+        this.evaluator = ev;
+        this.error_sq = new double[ev.getNet().getOutputLayer().size()];
+        this.alpha = alpha;
+        this.cycle = 0;
+        this.alphaDecline = alpha * 0.000001;
+        this.debug = false;
+    }
+    
+    /**
+     * Constructor for objects of class Generalizer.
+     * Use the default value of alpha.
+     * @param ev The evaluator.
+     */
+    public Generalizer(Evaluator ev)
+    {
+        this(ev, DEFAULT_ALPHA);
+    }
+    
+    /**
+     * Adjust the weights according to the discrepancies between the
+     * learner's evaluation of the given properties and the training value.
+     * @param properties The input values to the network.
+     * @param trainingValue The expected output values.
+     */
+    public void generalize(double[] properties, double[] trainingValue)
+    {
+        evaluator.getNet().update(properties, trainingValue,
+                                  cycle, error_sq, alpha);
+        cycle++;
+        if(alpha > 0) {
+            //alpha -= alphaDecline;
+            if(alpha < 0) {
+                System.out.println("*** Learning rate is now zero.");
+                alpha = 0;
+            }
+        }
+    }
+    
+    /**
+     * Reset the squared errors.
+     */
+    public void resetError()
+    {
+        for(int i = 0; i < error_sq.length; i++) {
+            error_sq[i] = 0;
+        }
+    }
+    
+    /**
+     * Report the squared errors.
+     */
+    public void reportError()
+    {
+        if(cycle != 0) {
+            System.out.print("Mean squared error: ");
+            for(int i = 0; i < error_sq.length; i++) {
+                System.out.print(error_sq[i] / cycle + " ");
+            }
+            System.out.println();
+        }
+    }
+    
+    /**
+     * Set the debugging state.
+     * @param debug true to turn on; false to turn off.
+     */
+    public void setDebug(boolean debug)
+    {
+        this.debug = debug;
+    }
+    
+    /**
+     * 
+     * @return The evaluator being used.
+     */
+    public Evaluator getEvaluator() {
+        return evaluator;
+    }
+}

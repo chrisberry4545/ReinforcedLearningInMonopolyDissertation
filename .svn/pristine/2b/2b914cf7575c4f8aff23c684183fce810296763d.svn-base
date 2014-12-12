@@ -1,0 +1,117 @@
+package Model.Players;
+
+import Model.DealOffer;
+import Model.Spaces.Space;
+import java.util.List;
+
+/**
+ * An abstract class encapsulating all types of AI used in the game.
+ * @author Chris Berry
+ */
+public abstract class AI extends Player {
+    
+    public AI(int tokenNumber) {
+        super(tokenNumber);
+    }
+
+/**
+ * Common AI methods.
+ */    
+    /**
+     * No need to do anything for AIs
+     */
+    @Override
+    public void showPlayerProperties() {
+        //Nothing to do.
+    }    
+
+/**
+ * Other abstract methods AI's cover.
+ */    
+    /**
+     * Ask player if they want to buy a property.
+     * @param property to ask about.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public abstract boolean 
+            askPlayerIfTheyWantToBuyProperty(Space property);
+    
+    /**
+     * Does nothing, AI's don't need to receive these messages.
+     * @param message to give player
+     * @param title of message
+     */
+    @Override
+    public void messagePlayer (String message, String title) {
+        //No point in messaging AI.
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    @Override
+    public abstract int askPlayerInJailOptions();
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    @Override
+    public abstract boolean askPlayerMoveOptions();
+    
+    /**
+     * Gets the player to assess a deal offer.
+     * @param offer which to assess.
+     * @param playerOffering player who has made the offer.
+     */
+    @Override
+    public abstract void assessAnOffer(DealOffer offer, Player playerOffering);
+    
+    /**
+     * Asks the player if they would like to make a bid on a property.
+     * @param property to bid on.
+     * @param minimumBid minimum amount a player can bid.
+     * @param playersInTheRunning A List of the other players in the running.
+     * @return the player's bid, or a value representing the player wishes
+     * to leave the bidding process.
+     */
+    @Override
+    public abstract int makeABid(Space property, int minimumBid,
+                                List<Player> playersInTheRunning);
+    
+    /**
+     * Asks the player if they want to make a bid on a house.
+     * @param minBid the minimum a player can bid on a house.
+     * @param isHouse true if the player is bidding on a house, false if it
+     * is a hotel.
+     * @param playersInRunning A List of the other players in the running.
+     * @return the player's bid, or a value represting the player wishes
+     * to leave the bidding process.
+     */
+    @Override
+    public abstract int makeABidOnHouse(int minBid, boolean isHouse,
+                                List<Player> playersInTheRunning);
+    /**
+     * The player receives a list of properties and becomes the owner of them
+     * all. Sometimes he will be required to pay a mortgage fee on these if
+     * they are already mortgaged.
+     * @param properties that player has received.
+     */
+    @Override
+    public abstract void receiveProperty(List<Space> properties);
+    
+    /**
+     * Informs the player they have won the game.
+     */
+    @Override
+    public abstract void hasWon();
+    
+    /**
+     * Informs the other players they have lost and generalizes appropriately.
+     */
+    @Override
+    public abstract void hasLost();
+    
+}

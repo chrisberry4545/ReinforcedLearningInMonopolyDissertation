@@ -1,0 +1,27 @@
+package Model;
+
+import java.util.*;
+
+/**
+ * A deck of community chest cards or chance cards.
+ * @author chris
+ */
+public class Deck {
+    
+    private List<Card> cards;
+    
+    public Deck(boolean communityChest) {
+                
+    }
+    
+    public Card drawCard() {
+        Card cardDrawn = cards.get(0);
+        cards.remove(0);
+        return cardDrawn;
+    }
+    
+    public void putCardAtBottemOfPile(Card card) {
+        cards.add(card);
+    }
+    
+}

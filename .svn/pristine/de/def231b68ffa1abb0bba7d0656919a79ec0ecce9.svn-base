@@ -1,0 +1,33 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Players.FirstTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Evaluator;
+
+/**
+ *
+ * @author chris
+ */
+public class Main {
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        double lambda = 0.5;
+        Evaluator evaluator = 
+                new AbstractEvaluator(lambda, FirstTDPlayer.NUM_INPUT_NODES, 
+                FirstTDPlayer.NUM_HIDDEN_NODES, 
+                FirstTDPlayer.NUM_OUTPUT_NODES);
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < 1000; i++) {
+            am.startNewGame(evaluator);
+            
+        }
+    }
+}

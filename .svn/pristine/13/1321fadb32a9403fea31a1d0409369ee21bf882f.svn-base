@@ -1,0 +1,59 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+import Model.Players.Player;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+import Model.*;
+import Display.*;
+import Controller.*;
+import java.util.ArrayList;
+
+/**
+ *
+ * @author chris
+ */
+public class IndividualCardTester {
+    
+    public IndividualCardTester() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    // @Test
+    // public void hello() {}
+    
+    /**
+     * Tests a card on a player to see if it works.
+     */
+    @Test
+    public void testCard() {
+        ActionManager am = ActionManager.getInstance();
+        Player p = Game.getInstance().nextPlayer();
+        
+        
+    }
+}

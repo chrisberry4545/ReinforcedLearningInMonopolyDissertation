@@ -1,0 +1,69 @@
+package Model.Players.TDInputGenerators;
+
+/**
+ * This version has increased hidden nodes to see if this has a different effect.
+ * @author Chris Berry
+ */
+public class FifthTDPlayerVer35 extends FifthTDPlayerVer31 {
+    
+    public static final int NUM_INPUT_NODES = 181;
+    public static final int NUM_OUTPUT_NODES = 1;
+    public static final int NUM_HIDDEN_NODES = 140; 
+    
+    /**
+     * This value gets returned from evaluators functions if the player cannot
+     * make this move. It is filled with highly negative values so the AI
+     * will not play these choices.
+     * These need to be changed if the outputs are changed.
+     * Color is also currently removed.
+     */
+    private double[] badOutput = {BAD_OUTPUT_NUM};
+    /**
+     * Sets up a TD Player
+     * @param playerNumber sets the player number of the TD Player
+     * @param currentBoard the current board the player will play on.
+     * @param critic used in the TD player's neural network.
+     */
+    public FifthTDPlayerVer35(boolean useDealSubsets) {
+        super(useDealSubsets);
+    }
+
+/**
+ * Getter Method.
+ */
+    /**
+     * Gets the number of input nodes used by the TD Player.
+     * @return number of input nodes.
+     */
+    @Override
+    public int getNumInputNodes() {
+        return NUM_INPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of output nodes used by the TD Player.
+     * @return number of output nodes.
+     */
+    @Override
+    public int getNumOutputNodes() {
+        return NUM_OUTPUT_NODES;
+    }
+    
+    /**
+     * Gets the number of hidden nodes used by the TD Player.
+     * @return number of hidden nodes.
+     */
+    @Override
+    public int getNumHiddenNodes() {
+        return NUM_HIDDEN_NODES;
+    }
+    
+    /**
+     * Gets the bad output array used by the TD player.
+     * @return bad output array used.
+     */
+    @Override
+    public double[] getBadOutputArray() {
+        return badOutput;
+    }    
+}

@@ -1,0 +1,147 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Model.Game;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
+/**
+ *
+ * @author Chris
+ */
+public class DatabaseGenRandomAI extends RandomAI {
+    
+    private static int lineCount = 0;
+    private TDInputGenerator inputGen;
+    private double[] previousInputs;
+    private int actionsTaken;
+    public static final int MAX_ACTIONS_TAKEN = 1;
+    
+    public DatabaseGenRandomAI(int number, TDInputGenerator inputGen) {
+        super(number);
+        this.inputGen = inputGen;
+        this.actionsTaken = 0;
+    }
+    
+    @Override
+    public boolean askPlayerMoveOptions() {
+        if (actionsTaken >= MAX_ACTIONS_TAKEN) {
+            actionsTaken = 0;
+            return true;
+        } else {
+           writeStateToDatabase();
+           actionsTaken++;
+           return super.askPlayerMoveOptions(); 
+        }
+    }
+    
+    @Override
+    public int askPlayerInJailOptions() {
+        if (actionsTaken >= MAX_ACTIONS_TAKEN) {
+            actionsTaken = 0;
+            return Player.STILL_IN_JAIL_TURN_OVER;
+        } else {
+            writeStateToDatabase();
+            actionsTaken++;
+            return super.askPlayerInJailOptions();
+        }
+    }
+    
+    public void writeStateToDatabase() {
+        lineCount++;
+        double[] inputs = inputGen.getCurrentInputs(this.getNumber());
+        previousInputs = inputs;
+        writeToFile(inputs);
+    }
+    
+    private static void writeToFile(double[] a){
+        try {
+            FileWriter fw = new FileWriter("MoveDB.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            for (double n: a){
+                bw.write(n + ",");
+            }
+            bw.newLine();
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+}
+    
+//    @Override
+//    public void hasWon() {
+//        lineCount++;
+//        try {
+//            FileWriter fw = new FileWriter("MoveDB.csv", true);
+//            BufferedWriter bw = new BufferedWriter(fw);
+//            bw.write("End," + true);
+//            bw.newLine();
+//            this.writeToFile(previousInputs);
+//            bw.close();
+//        } catch (IOException e) {
+//            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+//            e.printStackTrace();
+//        }
+//        System.out.println("Line count: "+ lineCount);
+//        
+//    }
+//    
+//    public void hasLost() {
+//        lineCount++;
+//        try {
+//            FileWriter fw = new FileWriter("MoveDB.csv", true);
+//            BufferedWriter bw = new BufferedWriter(fw);
+//            bw.write("End," + false);
+//            bw.newLine();
+//            this.writeToFile(previousInputs);
+//            bw.close();
+//        } catch (IOException e) {
+//            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+//            e.printStackTrace();
+//        }
+//        System.out.println("Line count: "+ lineCount);
+//    }
+    
+     @Override
+    public void hasWon() {
+        lineCount++;
+        try {
+            FileWriter fw = new FileWriter("MoveDB.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            boolean gameHitMaxRounds = false;
+            if (Game.getInstance().getRoundCount() == Game.MAX_ROUNDS) {
+                gameHitMaxRounds = true;
+            }
+            bw.write("End," + true +"," + String.valueOf(gameHitMaxRounds));
+            bw.newLine();
+            this.writeToFile(previousInputs);
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+        System.out.println("Line count: "+ lineCount);
+        
+    }
+    
+    public void hasLost() {
+        lineCount++;
+        try {
+            FileWriter fw = new FileWriter("MoveDB.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write("End," + false + "," + false);
+            bw.newLine();
+            this.writeToFile(previousInputs);
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+        System.out.println("Line count: "+ lineCount);
+    }
+}

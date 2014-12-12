@@ -1,0 +1,52 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package PlayerTests.TDPlayerTests;
+
+import java.util.List;
+import java.util.ArrayList;
+import Model.Game;
+import Model.Players.Player;
+import Model.Players.TestAI;
+import Model.Players.FirstTDPlayer;
+import Model.Players.AbstractTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+
+/**
+ *
+ * @author chris
+ */
+public class TDTestEnvirorment {
+    
+    protected AbstractTDPlayer tdPlayerOne;
+    protected Player otherPlayer;
+    
+    public void setUpTDTestEnvirorment() {
+        double lambda = 0.0;      
+        /**
+         * Enable to start new network.
+         */
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, FirstTDPlayer.NUM_INPUT_NODES, 
+                FirstTDPlayer.NUM_HIDDEN_NODES, 
+                FirstTDPlayer.NUM_OUTPUT_NODES);
+        evaluator.restartNetwork();
+        
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer,FirstTDPlayer.NUM_OUTPUT_NODES,
+                FirstTDPlayer.NUM_OUTPUT_NODES/2);
+        Game.newGame();
+        List<Player> allPlayers = new ArrayList();
+        tdPlayerOne = new FirstTDPlayer(0, Game.getInstance().getBoard(),critic);
+        tdPlayerOne.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        otherPlayer = new TestAI(1);
+        otherPlayer.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        allPlayers.add(tdPlayerOne);
+        allPlayers.add(otherPlayer);
+        Game.getInstance().addPlayers(allPlayers);
+    }
+    
+}

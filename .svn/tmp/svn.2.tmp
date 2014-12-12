@@ -1,0 +1,58 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Game;
+import Model.Players.FirstTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Evaluator;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.NeuralNetwork.Critic;
+
+/**
+ *
+ * @author chris
+ */
+public class Main {
+    
+    private static final String FILE_TO_LOAD = "June-01-2013-lambda0-1500runs";
+    private static final String FILE_NAME_TO_SAVE_TO = FILE_TO_LOAD;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        int gamesToRun = 1500;
+        double lambda = 0.0;
+        
+        /**
+         * Enable to start new network.
+         */
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, FirstTDPlayer.NUM_INPUT_NODES, 
+                FirstTDPlayer.NUM_HIDDEN_NODES, 
+                FirstTDPlayer.NUM_OUTPUT_NODES);
+        evaluator.restartNetwork();
+        
+        
+        /**
+         * Enable to load network.
+         */
+       // AbstractEvaluator evaluator = new AbstractEvaluator(FILE_TO_LOAD);
+       // evaluator.loadNet(FILE_TO_LOAD);
+        
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer);
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < gamesToRun; i++) {
+            System.out.println("On run :" + i);   
+            //startNewGame vars: critic, showGraphics, numHumanPlayers, numRandomAIs, numTDAIs.
+            am.startNewGame(critic, false, 0, 0, 2);
+        }
+        System.out.println("Out of " + gamesToRun + ", " +
+                am.getGamesOver250Rounds() + " of them ran over 250 rounds");
+        evaluator.saveNet(FILE_NAME_TO_SAVE_TO);
+    }
+}

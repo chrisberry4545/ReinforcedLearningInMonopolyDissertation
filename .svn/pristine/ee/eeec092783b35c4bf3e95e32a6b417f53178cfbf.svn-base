@@ -1,0 +1,224 @@
+package Model.Spaces;
+
+import Model.Game;
+import Model.Players.Player;
+
+
+/**
+ * A purchasable property in Monopoly.
+ * @author Chris Berry
+ */
+public abstract class Space {
+    public static final float MORTGAGE_REPAYMENT_MULTIPLYER = 0.1f;
+    
+    protected boolean mortgaged;
+    protected int mortgageRate;
+    protected String name;
+    protected Player owner;
+    protected int intialCost;
+    protected int spaceNumber;
+    
+    protected static int maxSpaceNumber = 0;
+    
+    public Space(String name,int intialCost, int mortgageRate) {
+        this.spaceNumber = maxSpaceNumber;
+        this.name = name;
+        this.intialCost = intialCost;
+        this.mortgaged = false;
+        this.mortgageRate = mortgageRate;
+        owner = null;
+        maxSpaceNumber++;
+    }
+    
+/**
+ * Abstract methods.
+ */
+    /**
+     * Returns the full mortgage value including value from selling houses
+     * and mortgaging the property.
+     * @return 
+     */
+    public abstract int getFullMortgageValue();
+    
+    /**
+     * Performs an action based on the space landed on.
+     * @param diceRoll the number the player rolled on the dice.
+     * @param player the player who landed on this space.
+     */
+    public abstract void performAction(int diceRoll, Player player);
+    
+/**
+ * Static methods.
+ */    
+    /**
+     * Resets the current maximum space number to zero.
+     */
+    public static void resetSpaceNumber() {
+        maxSpaceNumber = 0;
+    }
+    
+/**
+ * Key method.
+ */  
+    /**
+     * If it is not owned then the player is given the option to buy the
+     * property. It it's owned they pay the rent rate to the owner.
+     * @param player
+     * @param rent 
+     */
+    public void landedOnProperty(Player player, int rent) {
+        //If this is mortgaged then nothing happens.
+        if (!this.isMortgaged()) {
+            if (this.owner != null) {
+                //Somebody owns it. May have to pay rent.
+                //Only have to pay if it's not been mortgaged.
+                owner.optionalMoneyChange(rent);
+                player.forcedMoneyChange(-rent, owner);
+                player.messagePlayer("You paid p" + owner.getNumber() 
+                        + " " + rent, "Paid rent");
+            } else {
+                //Asks the player if they want to buy the property.
+                if (player.askPlayerIfTheyWantToBuyProperty(this)) {
+                    //If the accept check if this is possible.
+                    if (player.buyProperty(this)) {
+                        player.messagePlayer("You bought " + name
+                                   + " for " + intialCost,
+                                "You bought the property");
+                    } else {
+                        player.messagePlayer("You can't afford " 
+                                + name, "Not enough money");
+                    }
+                //If players don't want to buy the property is should be offered
+                //to other players.
+                } else {
+                    Game.getInstance().startAuction(this, true);
+                }
+            }
+        }
+    }
+    
+/**
+ * Mortgage methods.
+ */    
+     /**
+     * Mortgages this property.
+     */
+    public void mortgageProperty() {
+        this.mortgaged = true;
+        owner.optionalMoneyChange(mortgageRate);
+    }
+    
+    /**
+     * Buys back the property from the bank.
+     * @return true if successful.
+     */
+    public boolean unMortgageProperty() {
+        int mortgageRepayment = mortgageRate + getMortgageRepaymentRate();
+        if (owner.optionalMoneyChange(-mortgageRepayment)) {
+            this.mortgaged = false;
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * UnMortgages a property at no cost to the owner.
+     */
+    public void UnMortgageForFree() {
+        this.mortgaged = false;
+    }
+    
+/**
+ * Getter methods.
+ */    
+    /**
+     * Returns whether the space is mortgaged or not.
+     * @return true if the space is mortgaged.
+     */
+    public boolean isMortgaged() {
+        return mortgaged;
+    }
+    
+    /**
+     * Gets the current owner of the property.
+     * @return the Player who owns the property.
+     */
+    public Player getOwner() {
+        return owner;
+    }
+    
+    /**
+     * Gets the initial cost of the property.
+     * @return the initial amount a player will have to pay to become the owner 
+     * of the property.
+     */
+    public int getIntialCost() {
+        return intialCost;
+    }    
+    
+    /**
+     * Gets the value of this asset. Properties have the value
+     * as their normal purchase value (half if they are currently mortgaged), 
+     * and houses/hotels are worth the value paid for them.
+     * Note: overridden in Site.
+     * @return value of property.
+     */
+    public int getValue() {
+        if (this.isMortgaged()) {
+            return Math.round(this.intialCost/2);
+        } else {
+            return this.intialCost;
+        } 
+    }
+    
+    /**
+     * Gets the mortgage repayment rate of the property.
+     * @return mortgage repayment rate.
+     */
+    public int getMortgageRepaymentRate() {
+        return Math.round(mortgageRate * MORTGAGE_REPAYMENT_MULTIPLYER);
+    }
+    
+    /**
+     * Gets the mortgage rate on the property.
+     * @return mortgage cost
+     */
+    public int getMortgageRate() {
+        return mortgageRate;
+    }
+    
+    /**
+     * Gets the name of the Space.
+     * @return the name assigned to the space.
+     */
+    public String getName() {
+        return name;
+    }
+    
+    /**
+     * Gets the number of the space it takes on the board.
+     * @return the number of the space as it appears on the board.
+     */
+    public int getSpaceNumber() {
+        return spaceNumber;
+    }    
+    
+/**
+ * Setter methods.
+ */ 
+    /**
+     * Alters the owner of the property to the player. Removes
+     * the property from the current owner.
+     * @param player who will now own the property.
+     */
+    public void setOwner(Player player) {
+        //If it's already owned remove the current user.
+        if (this.owner !=null) {
+            owner.removeProperty(this);
+        }
+        owner = player;
+        if (player != null) {
+            player.addProperty(this);
+        }
+    }    
+}

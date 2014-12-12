@@ -1,0 +1,92 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+import Model.Spaces.Space;
+import Model.Spaces.SpaceEnums;
+import Model.Players.Player;
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class NearestProperty extends CardAction {
+    
+    private boolean isUtility;
+    private int utilityMultiplyer = 10;
+    private int stationMultiplyer = 2;
+    private boolean passGoMoney;
+    
+    public NearestProperty(boolean collectGoMoney, boolean utility) {
+        this.passGoMoney = collectGoMoney;
+        this.isUtility = utility;
+    }
+    
+    /**
+     * Finds the nearest forward utility or station to the player and 
+     * moves the player to this point. If the utility/station is owned
+     * by another player, the player will have to pay a larger amount.
+     * @param player to move.
+     */
+    @Override
+    public void performAction(Player player) {
+        if (isUtility) {
+            handleUtilityCard(player);
+        //Else it's the nearest station.
+        } else {
+            handleStationCard(player);
+        }
+    }
+    
+    public void handleUtilityCard(Player player) {
+        int spaceNum = player.getCurrentSpace().getSpaceNumber();
+        int newSpace;
+        int spacesToWater = spaceNum - SpaceEnums.WATER_COMPANY_NUMBER;
+        int spacesToElec = spaceNum - SpaceEnums.ELECTRIC_COMPANY_NUMBER;
+        //Less than 0 player has already passed it.
+        if (spacesToElec < 0 && spacesToWater > 0) {
+            newSpace = SpaceEnums.WATER_COMPANY_NUMBER;
+        } else {
+            newSpace = SpaceEnums.ELECTRIC_COMPANY_NUMBER;
+        }
+        Board board = Board.getInstance();
+        Space property = board.get(newSpace);
+        int amountOwed = player.rollDice() * utilityMultiplyer;
+        completeAction(newSpace, player, amountOwed, property);
+    }
+    
+    public void handleStationCard(Player player) {
+        int spaceNum = player.getCurrentSpace().getSpaceNumber();
+        int newSpace;
+        int spacesToKingsX = spaceNum - SpaceEnums.KINGS_CROSS_NUMBER;
+        int spacesToMarylebone = spaceNum - SpaceEnums.MARYLEBONE_NUMBER;
+        int spacesToFenchurch = spaceNum - SpaceEnums.FENCHURCH_NUMBER;
+        int spacesToLiverpoolSt = spaceNum - SpaceEnums.LIVERPOOL_ST_NUMBER;
+        if (spacesToKingsX < 0 && spacesToMarylebone > 0) {
+            newSpace = SpaceEnums.MARYLEBONE_NUMBER;
+        } else {
+            if (spacesToMarylebone < 0 && spacesToFenchurch > 0) {
+                newSpace = SpaceEnums.FENCHURCH_NUMBER;
+            } else {
+                if (spacesToFenchurch < 0 && spacesToLiverpoolSt > 0) {
+                    newSpace = SpaceEnums.LIVERPOOL_ST_NUMBER;
+                } else {
+                    newSpace = SpaceEnums.KINGS_CROSS_NUMBER;
+                }
+            }
+        }
+        Board board = Board.getInstance();
+        Space property = board.get(newSpace);
+        int amountOwed = property.performAction(2, player) * stationMultiplyer;
+        completeAction(newSpace, player, amountOwed, property);
+    }
+    
+    private void completeAction(int newSpace, Player player, int amountOwed,
+            Space property) {
+        Game.getInstance().movePlayerToSpaceNumber(player, newSpace,
+                passGoMoney);
+        property.landedOnProperty(player, amountOwed);
+    }
+}

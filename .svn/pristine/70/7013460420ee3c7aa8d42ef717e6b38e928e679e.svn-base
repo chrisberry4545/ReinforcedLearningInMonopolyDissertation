@@ -1,0 +1,199 @@
+package Model;
+
+import Model.Players.Player;
+import java.util.*;
+import Model.Cards.*;
+
+/**
+ * Stores information about the current state of the game.
+ * @author chris
+ */
+public class Game {
+    
+    private static Game instance;
+    
+    private int turnCounter = 0;
+    private int currentPlayerIndex;
+    private List<Player> allPlayers;
+    private Deck chanceCards;
+    private Deck communityChest;
+    private Board board;
+    private boolean gameFinished = false;
+    
+    public static final int playerStartingMoney = 1500;
+    public static final int passGoMoney = 200;
+    public static final int leaveJailCost = 50;
+    
+    protected Game(List<Player> players) {
+        this.allPlayers = players;
+        board = Board.getInstance();
+        intialiseCommunityChest();
+        intialiseChanceCards();
+    }
+    
+    /**
+    * Creates an instance of the game class or returns the instance
+    * which already exists.
+    * @return Game instance
+    */
+    public static Game getInstance(List<Player> players) {
+        if (instance == null) {
+            instance = new Game(players);
+        }
+        return instance;
+    }
+    
+    /**
+     * Gets the instance of the game and prints an error if no game exists.
+     * @return Game instance.
+     */
+    public static Game getInstance() {
+        if (instance == null) {
+            System.err.println("Game not yet created.");
+        }
+        return instance;
+    }
+    
+    /**
+     * Gives all players their starting money.
+     */
+    public void givePlayersStartingMoney() {
+        for (Player player :allPlayers) {
+            player.optionalMoneyChange(playerStartingMoney);
+        }
+    }
+    
+    private void intialiseCommunityChest() {
+        communityChest = new Deck(true, CreateCards.createCommunityChestCards());
+        communityChest.shuffleDeck();
+    }
+    
+    private void intialiseChanceCards() {
+        chanceCards = new Deck(false, CreateCards.createChanceCards());
+        chanceCards.shuffleDeck();
+    }
+    
+    /**
+     * Moves the player by a certain amounts of spaces and gives him money
+     * if he passes go.
+     * @param player
+     * @param spacesToMove
+     * @return newSpace number.
+     */
+    public int movePlayer(Player player, int spacesToMove) {
+        int currentSpace = player.getCurrentSpace().getSpaceNumber();
+        int newSpace = spacesToMove + currentSpace;
+        //If player goes backwards past go make sure he's on the right space.
+        if (newSpace < 0) {
+            newSpace =+ board.size();
+        }
+        //If player passes go.
+        if (newSpace >= board.size()) {
+            newSpace = newSpace - board.size();
+            player.optionalMoneyChange(Game.passGoMoney);
+        }
+        player.setSpace(board.get(newSpace));
+        return newSpace;
+    }
+    
+    /**
+     * Moves the player to the space number given.
+     * @param player to move.
+     * @param spaceNumberToMoveTo
+     * @param collectGoMoney whether the player should collect money if he
+     * passes go or not.
+     */
+    public void movePlayerToSpaceNumber(Player player,int spaceNumberToMoveTo,
+            boolean collectGoMoney) {
+        int currentSpace = player.getCurrentSpace().getSpaceNumber();
+        int spacesToMove = spaceNumberToMoveTo - currentSpace;
+        //If the number of spaces the player has to move is less than 0, then
+        //the space is behind the player and the player must pass go.
+        if (spacesToMove < 0) {
+            spacesToMove += board.size();
+            if (collectGoMoney) {
+                player.optionalMoneyChange(Game.passGoMoney);
+            }
+        }
+        player.setSpace(board.get(spaceNumberToMoveTo));
+    }
+    
+    /**
+     * Returns the player whos turn is next and moves the player and 
+     * turn counter along.
+     * @return Player whos turn is next.
+     */
+    public Player nextPlayer() {
+        if (currentPlayerIndex < allPlayers.size() - 1) {
+            currentPlayerIndex++;
+        } else {
+            currentPlayerIndex = 0;
+        }
+        turnCounter++;
+        return getCurrentPlayer();
+    }
+    
+    public List<Player> getPlayers() {
+        return allPlayers;
+    }
+    
+    public boolean gameFinished() {
+        return gameFinished;
+    }
+    
+    public Player getCurrentPlayer() {
+        return allPlayers.get(currentPlayerIndex);
+    }
+    
+    /**
+     * Draws a card from the community chest for a given player and returns
+     * the card description.
+     * @param player who is drawing the card.
+     * @return cards description.
+     */
+    public void drawFromCommunityChest(Player player) {
+        Card card = communityChest.drawCard();
+        card.getAction().performAction(player);
+        //Only need to put the card back if it's required.
+        if (card.shuffleBack()) {
+            communityChest.putCardAtBottomOfPile(card);
+        }
+        player.messagePlayer(card.getName(), "Community Chest");
+    }
+    
+    /**
+     * Draws a card from the chance for the given player and returns
+     * the cards description.
+     * @param player who is drawing the card.
+     * @return cards description.
+     */
+    public void drawFromChance(Player player) {
+        Card card = chanceCards.drawCard();
+        card.getAction().performAction(player);
+        //Only need to put the card back if it's required.
+        if (card.shuffleBack()) {
+            chanceCards.putCardAtBottomOfPile(card);
+        }
+        player.messagePlayer(card.getName(), "Chance");
+    }
+    
+    /**
+     * Returns whether the game is over or still continuing.
+     * @return true if the game is over.
+     */
+    public boolean isFinished() {
+        return gameFinished;
+    }
+    
+    public void declareBankruptcy(Player player) {
+        allPlayers.remove(player);
+        System.out.println(player.getToken() + " is bankrupt!");
+        //If less than 2 players remain the game is over.
+        if (allPlayers.size() < 2) {
+            System.out.println(allPlayers.get(0).getToken() + " has won!");
+            gameFinished = true;
+        }
+    }
+    
+    
+}

@@ -1,0 +1,361 @@
+package Display;
+
+import Model.Board;
+import Model.DealOffer;
+import Model.Players.HumanPlayer;
+import Model.Players.Player;
+import Model.Spaces.Space;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.swing.*;
+
+/**
+ * Display which a human player can use set up a deal to make to another player. 
+ * @author Chris Berry
+ */
+public class DealMakerDisplay extends JFrame{
+    
+    private final int displayWidth = 350;
+    private final int displayHeight = 300;
+    private JPanel currentPlayerDealPanel;
+    
+    private boolean disposed;
+    
+    private Map<Player, JSpinner> playersMoneyMap = new HashMap();
+    private Map<Player,Map<JCheckBox, Space> > playersCheckBoxes = new HashMap();
+    private DealOffer dealOffer = null;
+    private Player playerToOfferTo = null;
+    private Player currentPlayer;
+    
+    
+    private JPanel propertiesPanel;
+    private JPanel otherPlayersPanel;
+    private JPanel otherPlayerProperties;
+    
+    private JPanel spinnerPanel;
+    private JSpinner otherPlayerSpinner;
+    
+    /**
+     * Creates a new deal maker display.
+     * @param dealMaker player who is making the deal.
+     * @param otherPlayers list of other players still in the game.
+     * @param parentFrame parent frame that this will belong to.
+     */
+    public DealMakerDisplay(Player dealMaker, List<Player> otherPlayers, JFrame parentFrame) {
+        currentPlayer = dealMaker;
+        this.setTitle("Make a Deal");
+        this.getContentPane().setLayout(new BoxLayout(this.getContentPane(),
+                BoxLayout.Y_AXIS));
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new GridLayout());
+        topPanel.setMaximumSize(new Dimension(2000,50));
+        topPanel.add(new JLabel("Your assets (P" + dealMaker.getNumber() + ")"));
+        topPanel.add(playerComboBox(otherPlayers));
+        this.getContentPane().add(topPanel);
+        
+        this.getContentPane().add(setUpAllSpinners(otherPlayers, dealMaker));
+        
+        propertiesPanel = new JPanel();
+        propertiesPanel.setLayout(new GridLayout());
+        propertiesPanel.add(setUpCurrentPlayerPanel(dealMaker));
+        otherPlayersPanel = setUpOtherPlayersPanel(otherPlayers);
+        propertiesPanel.add(otherPlayersPanel);
+        this.getContentPane().add(propertiesPanel);
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(setUpAcceptButton(dealMaker));
+        this.getContentPane().add(buttonPanel);
+        
+        
+        this.setPreferredSize(new Dimension(displayWidth,displayHeight));
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        this.pack();
+        setCorrectSize();
+        this.setLocationRelativeTo(parentFrame);
+        this.setVisible(true);
+    }
+    
+    /**
+     * Disposes the frame and sets the variable which other classes can use to
+     * see if this frame has been disposed by the player.
+     */
+    @Override
+    public void dispose() {
+        this.disposed = true;
+        super.dispose();
+    }
+    
+    /**
+     * Sets up the spinners for both players so that their money can be entered.
+     * @param otherPlayers List of other players in the game.
+     * @param currentPlayer the current player, making the deal.
+     * @return JPanel containing the spinners.
+     */
+    private JPanel setUpAllSpinners(List<Player> otherPlayers, Player currentPlayer) {
+        for (Player player : otherPlayers) {
+            playersMoneyMap.put(player,setUpNumberSpinner(player));
+        }
+        JSpinner currentPlayerSpinner = setUpNumberSpinner(currentPlayer);
+        playersMoneyMap.put(currentPlayer,currentPlayerSpinner);
+        spinnerPanel = new JPanel();
+        spinnerPanel.setLayout(new GridLayout());
+        spinnerPanel.setMaximumSize(new Dimension(2000, 40));
+        spinnerPanel.add(currentPlayerSpinner);
+        otherPlayerSpinner = playersMoneyMap.get(otherPlayers.get(0));
+        spinnerPanel.add(otherPlayerSpinner);
+        return spinnerPanel;
+    }
+    
+    /**
+     * Sets up a number spinner for a player.
+     * @param player to set up number spinner for.
+     * @return JSpinner of set up spinner.
+     */
+    private JSpinner setUpNumberSpinner(Player player) {
+        SpinnerNumberModel sModel = 
+                new SpinnerNumberModel(0, 0, player.getMoney(), 1);
+        JSpinner spinner = new JSpinner(sModel);
+        return spinner;
+    }
+    
+    /**
+     * Swaps the current displayed number spinner with one for the player
+     * sent to the method.
+     * @param player to set up the spinner for.
+     */
+    private void swapNumberSpinner(Player player) {
+        spinnerPanel.remove(otherPlayerSpinner);
+        otherPlayerSpinner = playersMoneyMap.get(player);
+        spinnerPanel.add(otherPlayerSpinner);
+        spinnerPanel.revalidate();
+    }
+    
+    /**
+     * Sets up a panel for the current player.
+     * @param player to set up panel for.
+     * @return JPanel with current players panel added to it.
+     */
+    private JPanel setUpCurrentPlayerPanel(Player player) {
+        if (currentPlayerDealPanel != null) {
+            currentPlayerDealPanel.removeAll();
+        } else {
+            currentPlayerDealPanel = new JPanel();
+        }
+        currentPlayerDealPanel.setLayout(new BoxLayout(currentPlayerDealPanel,
+                BoxLayout.Y_AXIS));
+        currentPlayerDealPanel.add(setUpDealMakerPanel(player));
+        return currentPlayerDealPanel;
+    }
+    
+    /**
+     * Creates a deal maker panel for a player.
+     * @param player to set up deal maker panel for.
+     * @return JPanel of the deal maker panel for a given player.
+     */
+    public JPanel setUpDealMakerPanel(Player player) {
+        JPanel dealMakerPanel = new JPanel();
+        dealMakerPanel.setLayout(new BoxLayout(dealMakerPanel, BoxLayout.Y_AXIS));
+        
+        dealMakerPanel.add(Box.createVerticalGlue());
+        dealMakerPanel.add(setUpPropertyCheckBoxes(player));
+        dealMakerPanel.add(Box.createVerticalGlue());
+        
+        return dealMakerPanel;
+    }
+    
+    /**
+     * Sets up the property check box for a given player.
+     * @param player player to set up check boxes for.
+     * @return JPanel containing all the property check boxes for the player.
+     */
+    public JPanel setUpPropertyCheckBoxes(Player player) {
+        JPanel propertyCheckBoxesPanel = new JPanel();
+        propertyCheckBoxesPanel.setLayout(new BoxLayout(propertyCheckBoxesPanel,
+                BoxLayout.Y_AXIS));
+        
+        for (Space space : player.getProperties()) {
+            JCheckBox checkBox = new JCheckBox(space.getName());
+            checkBox.setBackground(Board.getColor(space.getColorNumber()));
+            checkBox.setForeground(Board.getMatchingTextColor(space.getColorNumber()));
+            if (playersCheckBoxes.containsKey(player)) {
+                playersCheckBoxes.get(player).put(checkBox, space);
+            } else {
+                Map<JCheckBox, Space> checkBoxSpaceMap = new HashMap();
+                checkBoxSpaceMap.put(checkBox, space);
+                playersCheckBoxes.put(player, checkBoxSpaceMap);
+            }
+            propertyCheckBoxesPanel.add(checkBox);
+        }
+        
+        return propertyCheckBoxesPanel;
+    }
+    
+    /**
+     * Sets up display panels for all the other players in the game.
+     * @param otherPlayers List of other players other than the current player.
+     * @return the set up JPanel.
+     */
+    private JPanel setUpOtherPlayersPanel(List<Player> otherPlayers) {
+        otherPlayersPanel = new JPanel();
+        otherPlayersPanel.setLayout(new BoxLayout(otherPlayersPanel, BoxLayout.Y_AXIS));
+        
+        otherPlayerProperties = new JPanel();
+        otherPlayerProperties = setUpOtherPlayerAssets(otherPlayers.get(0));
+        
+        return otherPlayersPanel;
+    }
+    
+    /**
+     * Sets up the deal maker panel for the given player.
+     * @param player to set up deal maker panel for.
+     * @return JPanel with deal maker panel set up for the player.
+     */
+    public JPanel setUpOtherPlayerAssets(Player player) {
+        playerToOfferTo = player;
+        return setUpDealMakerPanel(player);
+    }
+    
+    /**
+     * Method called when the combo box denoting who to deal with is changed.
+     * The UI is updated to display the properties of the new player.
+     * @param player for which to show properties for.
+     */
+    public void playerComboBoxChanged(Player player) {
+        otherPlayersPanel.remove(otherPlayerProperties);
+        otherPlayerProperties = setUpOtherPlayerAssets(player);
+        otherPlayersPanel.add(otherPlayerProperties);
+        otherPlayersPanel.revalidate();
+        setCorrectSize();
+        this.swapNumberSpinner(player);
+        this.repaint();
+    }
+    
+    /**
+     * Sets this Frame to the appropriate size.
+     */
+    private void setCorrectSize() {
+        double newHeight = this.getContentPane().getPreferredSize().getHeight() +
+                this.getContentPane().getPreferredSize().getHeight()/10 * 7;
+        int newHeightInt = (int)Math.round(newHeight);
+        
+        this.setSize(this.getWidth(),newHeightInt);
+    }
+    
+    /**
+     * Sets up the combo box allowing the player to select between a number
+     * of players.
+     * @param players List of players to add to combo box.
+     * @return the fully set up combo box.
+     */
+    private JComboBox playerComboBox(final List<Player> players) {
+        String[] playerNumbers = new String[players.size()];
+        for (int i = 0; i < players.size(); i++) {
+            playerNumbers[i] = "Player: " + players.get(i).getNumber();
+        }
+        final JComboBox playersComboBox = new JComboBox(playerNumbers);
+        playersComboBox.setSelectedIndex(0);
+        playersComboBox.setAction(new AbstractAction("Player changed") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedItem = (String)playersComboBox.getSelectedItem();
+                String selectedPlayerNumber = selectedItem.substring(selectedItem.length() - 1, selectedItem.length());
+                int playerSelected = Integer.parseInt(selectedPlayerNumber);
+                Player playerChosen = null;
+                for (Player p : players) {
+                    if (p.getNumber() == playerSelected) {
+                        playerChosen = p;
+                    }
+                }
+                playerComboBoxChanged(playerChosen);
+            }
+        });
+        return playersComboBox;
+    }
+    
+    /**
+     * Creates an 'accept' button. When clicked the deal offer is established.
+     * @param player who is making the deal.
+     * @return the set up JButton.
+     */
+    private JButton setUpAcceptButton(final Player player) {
+        JButton offerDeal = new JButton("Make Offer");
+        offerDeal.setAction(new AbstractAction("Make Offer") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            }
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                HumanPlayer humanPlayer = (HumanPlayer)player;
+                if (humanPlayer.askPlayerYesOrNoQuestion("Are you sure you want to make "
+                        + "this deal?", "Deal Confirmation")) {
+                    establishDealOffer();
+                }
+            }
+        });
+        return offerDeal;
+    }
+    
+    /**
+     * Sets up the deal offer with the variables the user has entered on the UI.
+     */
+    public void establishDealOffer() {
+        DealOffer offer = new DealOffer();
+        
+        int moneyToOffer = (Integer)this.playersMoneyMap.get(currentPlayer).getValue();
+        offer.offerCash(moneyToOffer);
+        
+        Map<JCheckBox, Space> thisPlayerMap = playersCheckBoxes.get(currentPlayer);
+        if (thisPlayerMap != null) {
+            for (JCheckBox checkBox : thisPlayerMap.keySet()) {
+                if (checkBox.isSelected()) {
+                    offer.addPropertyToOffer(thisPlayerMap.get(checkBox));
+                }
+            }
+        }
+        
+        int moneyToRequest = (Integer)this.playersMoneyMap.get(playerToOfferTo).getValue();
+        offer.requestCash(moneyToRequest);
+        
+        Map<JCheckBox, Space> otherPlayerMap = playersCheckBoxes.get(playerToOfferTo);
+        if (otherPlayerMap != null) {
+            for (JCheckBox checkBox : otherPlayerMap.keySet()) {
+                if (checkBox.isSelected()) {
+                    offer.addPropertyToRequest(otherPlayerMap.get(checkBox));
+                }
+            }
+        }
+        this.dealOffer = offer;
+        
+    }
+    
+    /**
+     * Gets the deal offer set up by the player.
+     * @return the deal offer set up by the player.
+     */
+    public DealOffer getDealOffer() {
+        return dealOffer;
+    }
+    
+    /**
+     * Gets the player the deal maker intends to make an offer to.
+     * @return the player the deal maker intends to make an offer to.
+     */
+    public Player getPlayerToOfferTo() {
+        return playerToOfferTo;
+    }
+    
+    /**
+     * Checks if the JFrame has been disposed of.
+     * @return true if the JFrame has been disposed.
+     */
+    public boolean isDisposed() {
+        return disposed;
+    }
+}

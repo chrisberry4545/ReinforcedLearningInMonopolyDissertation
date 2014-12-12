@@ -1,0 +1,61 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players.NeuralNetwork;
+
+import Controller.ActionManager;
+import Model.Game;
+import Model.Players.FirstTDPlayer;
+import Model.Players.Player;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author chris
+ */
+public class Critic {
+    
+    private Generalizer generalizer;
+    
+    public Critic(Generalizer generalizer) {
+        this.generalizer = generalizer;
+    }
+    
+    public Generalizer getGeneralizer() {
+        return generalizer;
+    }
+    
+    public void generalize(double[] previousStatesInput, double[] results) {
+        //If game isn't finished generalize as normal.
+        if (!Game.getInstance().isFinished()) {
+            generalizer.generalize(previousStatesInput, results);
+        } else { //Otherwise use final game output as the results.
+            //i used to check that there is only one player left.
+            int i = 0;
+            int winnerToken = -1;
+            for (Player winner : Game.getInstance().getPlayers()) {
+                winnerToken = winner.getToken();
+                if (i > 0) {
+                    System.err.println("More than one player remains");
+                }
+            }
+            if (winnerToken != -1) {
+                double[] actualResultsList = {0,0,0,0,0,0};
+                for (int j = 0; j < FirstTDPlayer.NUM_OUTPUT_NODES; j++) {
+                    if (j != winnerToken) {
+                        actualResultsList[j] = 0;
+                    } else {
+                        actualResultsList[j] = 1;
+                    }
+                }
+                generalizer.generalize(previousStatesInput, actualResultsList);
+            } else {
+                System.err.println("No winner is avaliable");
+            }
+        }
+    }
+    
+    
+}

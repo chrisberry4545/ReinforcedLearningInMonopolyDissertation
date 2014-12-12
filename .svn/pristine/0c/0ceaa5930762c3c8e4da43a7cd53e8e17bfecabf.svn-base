@@ -1,0 +1,90 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package CardTests;
+
+import Model.Cards.Card;
+import Model.Cards.ChairmanOfTheBoard;
+import Model.Cards.GetOutOfJailCard;
+import Model.Game;
+import Model.Players.*;
+import java.util.Map;
+import java.util.HashMap;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class PayOtherPlayerTest extends CardTestTemplate{
+    
+    public PayOtherPlayerTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+     @Test
+     public void testPayOtherPlayers() {
+         //Test with normal starting money.
+         payOthersTest(Game.PLAYER_STARTING_MONEY);
+         //Test with bankrupt player.
+         payOthersTest(0);
+     }
+    
+     public void payOthersTest(int startingMoney) {
+         for (int numOfOtherPlayers = 1;
+                 numOfOtherPlayers < Game.MAX_PLAYERS - 1;
+                 numOfOtherPlayers++) {
+             setUpGameWithPlayer(startingMoney,numOfOtherPlayers);
+             Card card = new Card("You have been elected chairman of the board."
+                + " Pay each player $50.",
+                new ChairmanOfTheBoard(), true);
+             Map<Player, Integer> playerMoney = new HashMap();
+             for (Player player : Game.getInstance().getPlayers()) {
+                 playerMoney.put(player,player.getMoney());
+             }
+             card.getAction().performAction(testPlayer);
+             int counter = 0;
+             int numPlayers = Game.getInstance().getPlayers().size();
+             for (Player player : Game.getInstance().getPlayers()) {
+                 int changeAmount = player.getMoney() - playerMoney.get(player);
+                 if (player.equals(testPlayer)) {
+                     if (player.getMoney() == 
+                             playerMoney.get(player)  - (50 * (numPlayers - 1))) {
+                         System.out.println("Player (who took card)"
+                                 + " has lost the correct "
+                                 + "amount");
+                     } else {
+                         fail("Player who picked card has had their money changed"
+                                 + " by the incorrect "
+                                 + "amount; changing by " +
+                                 changeAmount + " instead of -50");
+                     }
+                 } else { //Other player
+                     if (player.getMoney() == playerMoney.get(player) + 50) {
+                         System.out.println("Other player " + player.getToken() +
+                                 " has gained the correct amount");
+                     } else {
+                         fail("Other player has changed by the incorrect amount; " +
+                                 "changing by " + changeAmount + " instead of 50");
+                     }
+                 }
+                 counter++;
+             }       
+         }
+     }
+}

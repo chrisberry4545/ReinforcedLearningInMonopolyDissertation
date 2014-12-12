@@ -1,0 +1,95 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import Model.Players.Player;
+import Model.Spaces.Site;
+import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.GridLayout;
+
+
+/**
+ *
+ * @author chris
+ */
+public class HouseBuildingMenu extends JFrame{
+    
+    private Site propertySelected = null;
+    private boolean disposed = false;
+    
+    public HouseBuildingMenu(Player currentPlayer) {
+        this.getContentPane().setLayout(new BoxLayout(this.getContentPane(),
+                BoxLayout.Y_AXIS));
+        
+        this.getContentPane().add(houseBuyingPanel(currentPlayer.getSitesWhichCanBeBuiltOn()));
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        this.pack();
+        this.setLocationRelativeTo(null);
+        this.setVisible(true);
+    }
+    
+    @Override
+    public void dispose() {
+        this.disposed = true;
+        super.dispose();
+    }
+    
+    public JPanel houseBuyingPanel(List<Site> sites) {
+        JPanel housePanel = new JPanel();
+        housePanel.setLayout(new BoxLayout(housePanel, BoxLayout.Y_AXIS));
+        JPanel titlesPanel = new JPanel();
+        titlesPanel.setLayout(new GridLayout());
+        titlesPanel.add(new JLabel("Property"));
+        titlesPanel.add(new JLabel("Number of houses"));
+        titlesPanel.add(new JLabel("House Cost"));
+        titlesPanel.add(new JLabel("Buy Houses"));
+        housePanel.add(titlesPanel);
+        for (Site site : sites) {
+            housePanel.add(createSitePanel(site));
+        }
+        
+        return housePanel;
+    }
+    
+    public JPanel createSitePanel(final Site site) {
+        JPanel sitePanel = new JPanel();
+        sitePanel.setLayout(new GridLayout());
+//        sitePanel.setLayout(new BoxLayout(sitePanel, BoxLayout.X_AXIS));
+        sitePanel.add(new JLabel(site.getName()));
+        sitePanel.add(new JLabel("" + site.getHouses()));
+        sitePanel.add(new JLabel("" + site.getHouseCost()));
+        JButton buyHouseButton = new JButton("Buy House");
+        buyHouseButton.setAction(new AbstractAction("Buy House") {
+            {
+                putValue(Action.ACTION_COMMAND_KEY, getValue(Action.NAME));
+            } 
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setPropertySelected(site);
+            }
+        });
+        sitePanel.add(buyHouseButton);
+        return sitePanel;
+    }
+    
+    public void setPropertySelected(Site site) {
+        propertySelected = site;
+    }
+    
+    public Site getPropertySelected() {
+        return propertySelected;
+    }
+    
+    public boolean isDisposed() {
+        return this.disposed;
+    }
+    
+    
+    
+}

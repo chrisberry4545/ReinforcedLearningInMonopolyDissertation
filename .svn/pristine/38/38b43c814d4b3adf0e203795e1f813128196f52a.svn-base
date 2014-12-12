@@ -1,0 +1,75 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package GameMechanicsTesting;
+
+import GeneralTestMethods.GeneralTestMethods;
+import Model.Game;
+import Model.Board;
+import Model.Spaces.Space;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class PlayerMoveTests extends GeneralTestMethods {
+    
+    private Board board;
+    
+    public PlayerMoveTests() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+     @Test
+     public void playerMoveTest() {
+         super.setUpGameWithPlayer(Game.PLAYER_STARTING_MONEY, 2);
+         board = Game.getInstance().getBoard();
+         moveTest(board.get(0), 5, board.get(5));
+         moveTest(board.get(board.size() - 1), 13,
+                 board.get(12));
+         moveTest(board.get(board.size() - 9), 9, board.get(0));
+         moveTest(board.get(25),1,board.get(26));
+         moveTest(board.get(3),30,board.get(33));
+        
+     }
+     
+     public void moveTest(Space startingSpace,int movement,Space predictedEnd) {
+         testPlayer.setSpace(startingSpace);
+         Game.getInstance().movePlayer(testPlayer, movement);
+         Space endSpace = testPlayer.getCurrentSpace();
+         if (endSpace.equals(predictedEnd)) {
+             System.out.println("Test Succesfull: player started at " +
+                     startingSpace.getName() + " and moved " + movement +
+                     " spaces to " + predictedEnd.getName());
+         } else {
+             fail("Player started at " + startingSpace.getName() + " and was "
+                     + "supposed to move " + movement + " to " + 
+                     predictedEnd.getName() + " but instead ended up at " +
+                     endSpace.getName() + ".");
+         }
+     }
+}

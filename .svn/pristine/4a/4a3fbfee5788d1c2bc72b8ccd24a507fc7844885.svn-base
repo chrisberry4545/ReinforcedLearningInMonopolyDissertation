@@ -1,0 +1,115 @@
+package Model.Players;
+
+import Model.Board;
+import Model.DealOffer;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.List;
+
+/**
+ *
+ * @author chris
+ */
+public class AIControllerV1 extends AI{
+    
+    private TDMoveEvaluator tdMoveEvaluator;
+    private SmartBot bot;
+    
+    private final int roundsBeforeSwap = 30;
+    
+    public AIControllerV1(int tokenNumber, Critic critic, 
+            TDInputGenerator inputGen) {
+        super(tokenNumber);
+        this.bot = new SmartBot(tokenNumber);
+        this.tdMoveEvaluator = new TDMoveEvaluator(critic, inputGen, this);
+    }
+    
+    private boolean swapConditionMet() {
+        if (Game.getInstance().getRoundCount() > roundsBeforeSwap) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean askPlayerIfTheyWantToBuyProperty(Space property) {
+        if (swapConditionMet()) {
+            botPlayer
+        } else {
+            double currentResult = tdMoveEvaluator.getThisPlayersResults();
+            double buyingProperty = tdMoveEvaluator.getResultsOfBuyingProperty
+                    (property, property.getIntialCost(), this, this);
+            if (buyingProperty > currentResult) {
+                super.buyProperty(property);
+                return true;
+            }
+            return false;
+        }
+    }
+
+    @Override
+    public int askPlayerInJailOptions() {
+        if (swapConditionMet()) {
+            
+        } else {
+            
+        }
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean askPlayerMoveOptions() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean assessAnOffer(DealOffer offer, Player playerOffering) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int makeABid(Space property, int minimumBid, List<Player> playersInTheRunning) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse, List<Player> playersInTheRunning) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void receiveProperty(List<Space> properties) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void hasWon() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void hasLost() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void mortgageProperties() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sellHouses() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+    
+    
+    
+}

@@ -1,0 +1,96 @@
+package Model;
+
+/**
+ * Represents a square the player can land on within the Monopoly board.
+ * @author chris
+ */
+public enum Space {
+    
+    GO("GO"),
+    OLDKENTRD("Old Kent Road"),
+    COMMCHEST("Community Chest"),
+    WHITECHAPRD("Whitechapel Road"),
+    INCOMETAX ("Income Tax"),
+    KINGSXSTN ("Kings Cross Station"),
+    ANGEL ("The Angel, Islington"),
+    CHANCE ("Chance"),
+    EUSTONRD ("Euston Road"),
+    PENTONVILLERD ("Pentonville Road"),
+    JAIL ("Jail"),
+    PALLMALL ("Pall Mall"),
+    ELECTRICUTIL ("Electric Company"),
+    WHITEHALL ("Whitehall"),
+    NORTHUMBERLANDAV ("Northumberland Avenue"),
+    MARLYEBONESTN ("Marylebone Station"),
+    BOWST ("Bow Street"),
+    MARLBOROUGHST ("Marlborough Street"),
+    VINEST ("Vine Street"),
+    FREEPARKING ("Free Parking"),
+    STRAND ("Strand"),
+    FLEETST ("Fleet Street"),
+    TRAFALGARSQ ("Trafalgar Square"),
+    FENCHURCHST ("Fenchurch Station"),
+    LEICESTERSQ ("Leicester Square"),
+    COVENTRYST ("Coventry Street"),
+    WATERUTIL ("Water Works"),
+    PICCADILLY ("Piccadilly"),
+    GOTOJAIL ("GO TO JAIL"),
+    REGENTST ("Regent Street"),
+    OXFORDST ("Oxford Street"),
+    BONDST ("Bond Street"),
+    LIVERPOOLSTSTN ("Liverpool Street Station"),
+    PARKLANE ("Park Lane"),
+    SUPERTAX ("Super Tax"),
+    MAYFAIR ("Mayfair");
+    
+    
+    
+    private String name;
+    private int spaceNumber;
+    
+    private Space (String name) {
+        this.name = name;
+    }
+    
+    public String getName() {
+        return name;
+    }
+   
+//    public final static String GO = "GO";
+//    public final static String OLDKENTRD = "Old Kent Road";
+//    public final static String COMMCHEST = "Community Chest";
+//    public final static String WHITECHAPRD = "Whitechapel Road";
+//    public final static String INCOMETAX = "Income Tax";
+//    public final static String KINGSXSTN = "Kings Cross Station";
+//    public final static String ANGEL = "The Angel, Islington";
+//    public final static String CHANCE = "Chance";
+//    public final static String EUSTONRD = "Euston Road";
+//    public final static String PENTONVILLERD = "Pentonville Road";
+//    public final static String JAIL = "Jail";
+//    public final static String PALLMALL = "Pall Mall";
+//    public final static String ELECTRICUTIL = "Electric Company";
+//    public final static String WHITEHALL = "Whitehall";
+//    public final static String NORTHUMBERLANDAV = "Northumberland Avenue";
+//    public final static String MARLYEBONESTN = "Marylebone Station";
+//    public final static String BOWST = "Bow Street";
+//    public final static String MARLBOROUGHST = "Marlborough Street";
+//    public final static String VINEST = "Vine Street";
+//    public final static String FREEPARKING = "Free Parking";
+//    public final static String STRAND = "Strand";
+//    public final static String FLEETST = "Fleet Street";
+//    public final static String TRAFALGARSQ = "Trafalgar Square";
+//    public final static String FENCHURCHST = "Fenchurch Station";
+//    public final static String LEICESTERSQ = "Leicester Square";
+//    public final static String COVENTRYST = "Coventry Street";
+//    public final static String WATERUTIL = "Water Works";
+//    public final static String PICCADILLY = "Piccadilly";
+//    public final static String GOTOJAIL = "GO TO JAIL";
+//    public final static String REGENTST = "Regent Street";
+//    public final static String OXFORDST = "Oxford Street";
+//    public final static String BONDST = "Bond Street";
+//    public final static String LIVERPOOLSTSTN = "Liverpool Street Station";
+//    public final static String PARKLANE = "Park Lane";
+//    public final static String SUPERTAX = "Super Tax";
+//    public final static String MAYFAIR = "Mayfair";
+    
+}

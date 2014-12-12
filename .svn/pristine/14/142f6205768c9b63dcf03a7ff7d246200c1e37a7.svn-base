@@ -1,0 +1,197 @@
+package Model;
+
+import Model.Spaces.Site;
+import Model.Spaces.Station;
+import Model.Spaces.Space;
+import Model.Spaces.Tax;
+import Model.Spaces.Utility;
+import Model.Spaces.SpaceEnums;
+import Model.Spaces.CardSpace;
+import Display.BoardDisplay;
+import java.util.*;
+import java.awt.Color;
+
+/**
+ * A list containing all the spaces representing the full board.
+ * @author chris
+ */
+public class Board extends ArrayList<Space>{
+    
+    private static Board instance = null;
+    
+    //These need to change
+    private Color brown = Color.black;
+    private Color lightBlue = Color.LIGHT_GRAY;
+    private Color pink = Color.pink;
+    private Color orange = Color.ORANGE;
+    private Color red = Color.RED;
+    private Color yellow = Color.YELLOW;
+    private Color green = Color.GREEN;
+    private Color blue = Color.BLUE;
+    
+    /**
+    * Returns an instance of the singleton class Board
+    * @return Board instance
+    */
+    public static Board getInstance() {
+        if (instance == null) {
+            instance = new Board();
+        }
+        return instance;
+    }
+    
+    protected Board() {
+        int[] houses1 = {2, 10,30,90,160,250};
+        
+        //GO
+        this.add(new Tax(SpaceEnums.GO.getName(), 0));
+        
+        //Brown properties
+        this.add(new Site(SpaceEnums.OLDKENTRD.getName(),
+                60, 30, houses1, 50, brown));
+        
+        //Community Chest
+        this.add(new CardSpace(SpaceEnums.COMMCHEST.getName(), true));
+        
+        int[] houses2 = {4, 20,60,180,320,450};
+        this.add(new Site(SpaceEnums.WHITECHAPRD.getName(), 60, 30,
+                houses2, 50, brown));
+        
+        //Income tax 
+        this.add(new Tax(SpaceEnums.INCOMETAX.getName(), 200));
+        
+        //Station
+        this.add(new Station(SpaceEnums.KINGSXSTN.getName(), 200, 100));
+        
+        //Light blue properties
+        int[] houses3 = {6,30,90,270,400,550};
+        this.add(new Site(SpaceEnums.ANGEL.getName(), 100, 50,
+                houses3, 50, lightBlue));
+        
+        //Chance
+        this.add(new CardSpace(SpaceEnums.CHANCE.getName(), false));
+        
+        //Light blue Properties
+        int[] houses4 = {6,30,90,270,400,550};
+        this.add(new Site(SpaceEnums.EUSTONRD.getName(), 100, 50,
+                houses4, 50, lightBlue));
+        int[] houses5 = {8,40,100,300,450,600};
+        this.add(new Site(SpaceEnums.PENTONVILLERD.getName(), 120, 60,
+                houses5, 50, lightBlue));
+        
+        //Jail
+        this.add(new Tax(SpaceEnums.JAIL.getName(), 0));
+        
+        //Pink Properties
+        int[] houses6 = {10,50,150,450,625,750};
+        this.add(new Site(SpaceEnums.PALLMALL.getName(), 140, 70,
+                houses6, 100, pink));
+        
+        //Util
+        this.add(new Utility(SpaceEnums.ELECTRICUTIL.getName(), 150, 75));
+        
+        //Pink Properties
+        int[] houses7 = {10,50,150,450,625,750};
+        this.add(new Site(SpaceEnums.WHITEHALL.getName(), 140, 70,
+                houses7, 100, pink));
+        int[] houses8 = {12,60,180,500,700,900};
+        this.add(new Site(SpaceEnums.WHITECHAPRD.getName(), 160, 80,
+                houses8, 100, pink));
+        
+        //Station
+        this.add(new Station(SpaceEnums.MARLYEBONESTN.getName(), 200, 100));
+        
+        //Orange Properties
+        int[] houses9 = {14,70,200,550,750,950};
+        this.add(new Site(SpaceEnums.BOWST.getName(), 180, 90,
+                houses9, 100, orange));
+        
+        //Community Chest
+        this.add(new CardSpace(SpaceEnums.COMMCHEST.getName(), true));
+        
+        //Orange Properties
+        int[] houses10 = {14,70,200,550,750,950};
+        this.add(new Site(SpaceEnums.MARLBOROUGHST.getName(), 180, 90,
+                houses10, 100, orange));
+        int[] houses11 = {16,80,220,600,800,1000};
+        this.add(new Site(SpaceEnums.VINEST.getName(), 200, 100,
+                houses11, 100, orange));
+        
+        //Free Parking
+        this.add(new Tax(SpaceEnums.FREEPARKING.getName(), 0));
+        
+        //Red Properties
+        int[] houses12 = {18,90,250,700,875,1050};
+        this.add(new Site(SpaceEnums.STRAND.getName(), 220, 110,
+                houses12, 150, red));
+        
+        //Chance
+        this.add(new CardSpace(SpaceEnums.CHANCE.getName(), false));
+        
+        //Red Properties
+        int[] houses13 = {18,90,250,700,875,1050};
+        this.add(new Site(SpaceEnums.FLEETST.getName(), 220, 110,
+                houses13, 150, red));
+        int[] houses14 = {20,100,300,750,925,1100};
+        this.add(new Site(SpaceEnums.TRAFALGARSQ.getName(), 240, 120,
+                houses14, 150, red));
+        
+        //Station
+        this.add(new Station(SpaceEnums.FENCHURCHST.getName(), 200, 100));
+        
+        //Yellow properties
+        int[] houses15 = {22,110,330,800,975,1150};
+        this.add(new Site(SpaceEnums.LEICESTERSQ.getName(), 260, 130,
+                houses15, 150, yellow));
+        int[] houses16 = {22,110,330,800,975,1150};
+        this.add(new Site(SpaceEnums.COVENTRYST.getName(), 260, 130,
+                houses16, 150, yellow));
+        
+        this.add(new Utility(SpaceEnums.WATERUTIL.getName(), 150, 75));
+        
+        int[] houses17 = {24,120,360,850,1025,1200};
+        this.add(new Site(SpaceEnums.PICCADILLY.getName(), 280, 140,
+                houses17, 150, yellow));
+        
+        //Go to Jail NOT IMPLEMENTED CORRECTLY YET.
+        this.add(new Site(SpaceEnums.GOTOJAIL.getName(), 60, 30,
+                houses1, 50, brown));
+        
+        //Green Properties
+        int[] houses18 = {26,130,390,900,1100,1275};
+        this.add(new Site(SpaceEnums.REGENTST.getName(), 300, 150,
+                houses18, 200, green));
+        int[] houses19 = {26,130,390,900,1100,1275};
+        this.add(new Site(SpaceEnums.OXFORDST.getName(), 300, 150,
+                houses19, 200, green));
+        
+        //Community Chest
+        this.add(new CardSpace(SpaceEnums.COMMCHEST.getName(), true));
+        
+        //Green properties
+        int[] houses20 = {28,150,450,1000,1200,1400};
+        this.add(new Site(SpaceEnums.BONDST.getName(), 320, 160,
+                houses20, 200, green));
+        
+        //Station
+        this.add(new Station(SpaceEnums.LIVERPOOLSTSTN.getName(), 200, 100));
+        
+        //Chance
+        this.add(new CardSpace(SpaceEnums.CHANCE.getName(), false));
+        
+        //Blue Properties
+        int[] houses21 = {35,175,500,1100,1300,1500};
+        this.add(new Site(SpaceEnums.PARKLANE.getName(), 350, 175,
+                houses21, 200, blue));
+        
+        //Super tax
+        this.add(new Tax(SpaceEnums.SUPERTAX.getName(), 100));
+        
+        //Blue Properties
+        int[] houses22 = {50,200,600,1400,1700,2000};
+        this.add(new Site(SpaceEnums.MAYFAIR.getName(), 400, 200,
+                houses22, 200, blue));
+        
+    }
+    
+}

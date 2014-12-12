@@ -1,0 +1,35 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+
+/**
+ *
+ * @author chris
+ */
+public class BirthdayPresents extends CardAction {
+    
+    private int present = 10;
+    
+    public BirthdayPresents() {
+        
+    }
+    
+    /**
+     * Player gets a present from every other player in the game.
+     * @param player 
+     */
+    public void performAction(Player player) {
+        for (Player otherPlayer : Game.getInstance().getPlayers()) {
+            if (!otherPlayer.equals(player)) {
+                otherPlayer.changeMoney(-present);
+                player.changeMoney(present);
+            }
+        } 
+    }
+    
+}

@@ -1,0 +1,41 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Players.FirstTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.Evaluator;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.NeuralNetwork.Critic;
+
+/**
+ *
+ * @author chris
+ */
+public class Main {
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        double lambda = 0.5;
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, FirstTDPlayer.NUM_INPUT_NODES, 
+                FirstTDPlayer.NUM_HIDDEN_NODES, 
+                FirstTDPlayer.NUM_OUTPUT_NODES);
+        
+        //Network needs to be reset so nodes created first know about their
+        //output nodes created later.
+        evaluator.restartNetwork();
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer);
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < 1000; i++) {
+            am.startNewGame(critic);
+            
+        }
+    }
+}

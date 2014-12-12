@@ -1,0 +1,336 @@
+package Model.Players;
+
+import Model.Bank;
+import Model.DealOffer;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * A random AI in the game of Monopoly. Chooses each action entirely randomly.
+ * @author Chris Berry
+ */
+public class RandomAI extends AI{
+    
+    Random random;
+    
+    /**
+     * Creates a random AI with a specific player number.
+     * @param playerNumber for the player to use.
+     */
+    public RandomAI(int playerNumber) {
+        super(playerNumber);
+        random = new Random();
+    }
+
+/**
+ * Player's choices.
+ */
+    /**
+     * Randomly chooses a move option.
+     * @return true if the player is finished.
+     */
+    @Override
+    public boolean askPlayerMoveOptions() {
+        //One less than player as there is no need to view properties.
+        int choice = randomOptionChoice(Player.SHOW_PROPERTIES);
+        switch(choice) {
+            case Player.ROLL_DICE : 
+                return true;
+            case Player.BUY_HOUSES :
+                //Brings up options again after player makes a choice.
+                buildHouseOnProperty();
+                break;
+            case Player.OFFER_PROPERTY :
+                this.makeAnOfferToAnotherPlayer();
+                //Player can still continue their turn.
+                break;
+            case Player.MORTGAGE_PROPERTIES :
+                this.mortgageProperties();
+                //Player can still continue their turn.
+                break;
+            case Player.SELL_HOUSES :
+                this.sellHouses();
+                //Player can still continue their turn.
+                break;
+            case Player.BUY_BACK_MORTGAGED_PROPERTIES :
+                this.buyBackMortgagedProperty();
+                //Player can still continue their turn.
+                break;
+            case Player.SHOW_PROPERTIES :
+                showPlayerProperties();
+                //Player can still continue their turn.
+                break;
+        }
+        return false;
+    }  
+    
+    /**
+     * Randomly chooses a jail option.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        int choice = randomOptionChoice(4);
+        switch (choice) {
+            //Pay to leave.
+            case Player.PAY_TO_LEAVE : 
+                if (this.payToLeaveJail()) {
+                    return Player.rollDice();
+                } else {
+                    return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+                }
+            //Roll to leave.
+            case Player.ROLL_TO_LEAVE : 
+                int diceRoll = this.rollToLeaveJail();
+                //Returns -1 if a double isn't rolled.
+                if (diceRoll == -1) {
+                    return diceRoll;
+                } else {
+                    return Player.STILL_IN_JAIL_TURN_OVER;
+                    //Turn finishes in this case.
+                }
+            //Use get out of jail card.
+            case Player.USE_GET_OUT_OF_JAIL_CARD : 
+                if (this.useGetOutOfJailCard() != null) {
+                    return Player.rollDice();
+                } else {
+                    return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+                }
+            //Buy houses.
+            case Player.JAIL_BUY_HOUSES : 
+                this.buildHouseOnProperty();
+                return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+            default :
+                System.err.println("Invalid choice at get out of jail stage"
+                        + " for random AI " + this.getNumber());
+                return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+        }
+    }    
+    
+    /**
+     * Randomly chooses yes or no.
+     * @param property to ask about.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerIfTheyWantToBuyProperty(Space property) {
+        int response = randomOptionChoice(2);
+        if (response == 0) {
+            return true;
+        }
+        return false;
+    }
+    
+    private void buildHouseOnProperty() {
+        Site site = choosePropertyForBuildingOn();
+            if (site != null) {
+                site.addHouse();
+        }
+    }
+    
+    /**
+     * Randomly chooses a property to build houses on.
+     * @return 
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        List<Site> sitesCanBeBuiltOn = getSitesWhichCanBeBuiltOn();
+        if (sitesCanBeBuiltOn.size() > 0) {
+            int choice = randomOptionChoice(sitesCanBeBuiltOn.size());
+            return sitesCanBeBuiltOn.get(choice);
+        }
+        return null;
+    }
+    
+    /**
+     * Mortgage a property randomly and see if the debt is cleared, else
+     * mortgage another property.
+     * @param properties 
+     */
+    @Override
+    public void mortgageProperties() {
+        List<Space> properties = getMortgagableProperties();
+        //Only needs to happen if there are properties avaliable to mortgage.
+        if (properties.size() > 0) {
+            int choice = randomOptionChoice(properties.size());
+            Space property = properties.get(choice);
+            property.mortgageProperty();
+        }
+    }
+    
+    /**
+     * Randomly chooses to make a bid or not, if it chooses to make a bid,
+     * it will return a random amount up to the player's max money.
+     * @param property to bid on.
+     * @param minimumBid the minimum amount valid to bid.
+     * @return the AI's bid.
+     */
+    @Override
+    public int makeABid(Space property, int minimumBid,
+                    List<Player> playersInBidding) {
+        if (randomOptionChoice(2) > 0 &&
+                this.getMoney() - minimumBid >= 0) {
+            int amountToBid = randomOptionChoice(this.getMoney() - minimumBid);
+            amountToBid += minimumBid;
+            return amountToBid;
+        } else {
+            return Player.LEAVE_BIDDING_PROCESS;
+        }
+    }
+    
+    /**
+     * Randomly chooses to make a bid or not on a house.
+     * @param minBid minimum player can bid.
+     * @param isHouse true if the player is bidding on a house.
+     * @param playersInBidding List of players in the bidding.
+     * @return the amount bid by the player.
+     */
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse,
+                        List<Player> playersInBidding) {
+        return makeABid(null, minBid, playersInBidding);
+    }
+    
+    /**
+     * The AI sells a house on each of the properties it owns. Selling a random
+     * amount caused stack overflow errors as the AI would often choose low 
+     * amounts so this solution tries to avoid that.
+     */
+    public void sellHouses() {
+        for (Space property : getPropertiesWithHouses()) {
+            Site site = (Site)property;
+            //A single house is sold on each property if they have any houses.
+            if (site.getHouses() > 0) {
+                site.returnHouses(1);
+            }
+        }
+    }
+    
+    /**
+     * The AI selects a random property to sell to another random player
+     * at a random price (which the player can afford).
+     */
+    public void makeAnOfferToAnotherPlayer() {
+        DealOffer offer = new DealOffer();
+        //Randomly choose a player.
+        List<Player> players = Game.getInstance().getPlayers();
+        int playerChoice = randomOptionChoice(players.size());
+        Player chosenPlayer = players.get(playerChoice);
+        //Randomly choose some of its own properties to offer.  
+        //Makes a copy so I can remove things.
+        List<Space> allProperties = new ArrayList(getProperties());
+        if (getProperties().size() > 0) {
+            int numberOfPropertiesToOffer = 
+                randomOptionChoice(allProperties.size());
+            for (int i=0; i < numberOfPropertiesToOffer; i++) {
+                int propertyChoice = randomOptionChoice(allProperties.size());
+                //Adds the property choice and removes it so it's not added twice.
+                offer.addPropertyToOffer(allProperties.get(propertyChoice));
+                allProperties.remove(propertyChoice);
+            }
+        }
+        //Randomly chooses some of the other players properties to request.
+        List<Space> otherPlayersProperties = 
+                new ArrayList(chosenPlayer.getProperties());
+        if (otherPlayersProperties.size() > 0) {
+            int numOfPropertiesToRequest = 
+                    randomOptionChoice(otherPlayersProperties.size());
+            for (int i=0; i < numOfPropertiesToRequest; i++) {
+                int propertyChoice = 
+                        randomOptionChoice(otherPlayersProperties.size());
+                //Adds the request choice and removes from the local list so its not added twice.
+                offer.addPropertyToRequest(otherPlayersProperties.get(propertyChoice));
+                otherPlayersProperties.remove(propertyChoice);
+            }
+        }
+        //Randomly chooses money to request and offer.
+        int amountToCharge = randomOptionChoice(chosenPlayer.getMoney());
+        offer.requestCash(amountToCharge);
+        int amountToOffer = randomOptionChoice(this.getMoney());
+        offer.offerCash(amountToOffer);
+        chosenPlayer.assessAnOffer(offer, this);
+    }
+    
+    /**
+     * The AI randomly chooses whether to buy the property or not.
+     * @param spaceOffered
+     * @param playerOffering
+     * @param priceOffered 
+     */
+    @Override
+    public void assessAnOffer(DealOffer offer, Player playerOffering) {
+        if (randomOptionChoice(2) > 1) {
+            acceptDealFromPlayer(offer, playerOffering);
+        }
+    }
+    
+    /**
+     * Randomly choose a property to buy back and attempt to buy it back.
+     */
+    public void buyBackMortgagedProperty() {
+        List<Space> mortgagedProperties = getMortgagedProperties();
+        if (mortgagedProperties.size() > 0) {
+            int choice = randomOptionChoice(mortgagedProperties.size());
+            mortgagedProperties.get(choice).unMortgageProperty();
+        }
+    }
+    
+    /**
+     * Randomly choose to pay the mortgage or to pay the interest.
+     * @param property
+     * @return 
+     */
+    @Override
+    public void receiveProperty(List<Space> properties) {
+        Iterator<Space> propertiesIterator = properties.iterator();
+        while (propertiesIterator.hasNext()) {
+            Space property = propertiesIterator.next();
+            property.setOwner(this);
+            int n = randomOptionChoice(2);
+            switch (n) {
+                case 0 :
+                    //If they can't afford the mortgage just let them mortgage it.
+                    if (!this.buyProperty(property)) {
+                        this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                                Bank.getInstance());                   
+                    }
+                    break;
+                case 1 :
+                    this.forcedMoneyChange(-property.getMortgageRepaymentRate(),
+                                Bank.getInstance());
+            }
+        }
+    }
+
+/**
+ * Other methods.
+ */    
+    /**
+     * Nothing to do if random AI wins.
+     */
+    @Override
+    public void hasWon() {
+        //Nothing to do.
+    }
+    
+/**
+ * Random Choice methods.
+ */    
+    /**
+     * Randomly selects a number between 0 and the number of options.
+     * @param numberOfOptions
+     * @return 
+     */
+    public int randomOptionChoice(int numberOfOptions) {
+        if (numberOfOptions > 0) {
+            int choice = random.nextInt(numberOfOptions);
+            return choice;
+        }
+        return 0;
+    }    
+}

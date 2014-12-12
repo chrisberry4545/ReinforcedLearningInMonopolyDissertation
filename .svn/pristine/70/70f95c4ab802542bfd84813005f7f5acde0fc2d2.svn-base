@@ -1,0 +1,134 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package PlayerTests.TDPlayerTests;
+
+import Model.Game;
+import Model.Players.ThirdTDPlayer;
+import Model.Players.AbstractTDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.Player;
+import Model.Players.TestAI;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+import Model.Game;
+import Model.Spaces.Site;
+
+/**
+ *
+ * @author Chris
+ */
+public class ThirdTDPlayerTest {
+    
+    public ThirdTDPlayerTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+
+    @Test
+    public void thirdTDTest() {
+        //Setup.
+        double lambda = 0.0;      
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, ThirdTDPlayer.NUM_INPUT_NODES, 
+                ThirdTDPlayer.NUM_HIDDEN_NODES, 
+                ThirdTDPlayer.NUM_OUTPUT_NODES);
+        evaluator.restartNetwork();
+        
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer,ThirdTDPlayer.NUM_OUTPUT_NODES);
+        Game.newGame();
+        List<Player> allPlayers = new ArrayList();
+        ThirdTDPlayer tdPlayerInputs = new ThirdTDPlayer();
+        AbstractTDPlayer tdPlayerOne = new AbstractTDPlayer(0, Game.getInstance().getBoard(),critic,
+                tdPlayerInputs,false);
+        tdPlayerOne.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        AbstractTDPlayer tdPlayerTwo = new AbstractTDPlayer(1, Game.getInstance().getBoard(),critic,
+                tdPlayerInputs, false);
+        tdPlayerTwo.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        allPlayers.add(tdPlayerOne);
+        allPlayers.add(tdPlayerTwo);
+        Game.getInstance().addPlayers(allPlayers);
+        
+        //Gives p1 all properties.
+        for (Site site : Game.getInstance().getBoard().getAllSites()) {
+            site.setOwner(tdPlayerOne);
+        }
+        
+        tdPlayerOne.optionalMoneyChange(-500);
+        
+        
+        System.out.println("TD Player One current inputs for itself:");
+        String tdPlayerOneInputs = printArrayDouble(tdPlayerInputs.getCurrentInputs(0));
+        System.out.println(tdPlayerOneInputs);
+        
+        System.out.println("TD Player One current inputs for other player:");
+        String tdPlayerOnesViewOfTDP2sInputs = printArrayDouble(tdPlayerInputs.getCurrentInputs(1));
+        System.out.println(tdPlayerOnesViewOfTDP2sInputs);
+        
+        System.out.println("TD Player Two current inputs for itself:");
+        String tdPlayerTwosInputs = printArrayDouble(tdPlayerInputs.getCurrentInputs(1));
+        System.out.println(tdPlayerTwosInputs);
+        
+        System.out.println("TD Player Two current inputs other player:");
+        String tdPlayerTwosViewOfTDP1sInputs = printArrayDouble(tdPlayerInputs.getCurrentInputs(0));
+        System.out.println(tdPlayerTwosViewOfTDP1sInputs);
+        
+        
+        //Check p1s views of p1s inputs is same as p2s view of p1s inputs.
+        if (tdPlayerOneInputs.equals(tdPlayerTwosViewOfTDP1sInputs)) {
+            System.out.println("Test Successfull: P1s view of their inputs"
+                    + " is the same as player twos view of their inputs.");
+        } else {
+            fail("Td P1 and TDP2 have different views of TD P1s inputs");
+        }
+        
+        //Checks p2s views of p2s inputs is the same as p1s views of p2s inputs.
+        if (tdPlayerOneInputs.equals(tdPlayerTwosViewOfTDP1sInputs)) {
+            System.out.println("Test Successfull: P1s view of P2s inputs"
+                    + " is the same as player twos view of P2s inputs.");
+        } else {
+            fail("Td P1 and TDP2 have different views of TD P2s inputs");
+        }
+        
+        //Checks the players have different input values.
+        if (!tdPlayerOneInputs.equals(tdPlayerTwosInputs)) {
+            System.out.println("Test Successful: the players have different"
+                    + "input values");
+        } else {
+            fail("The players have the same input values");
+        }
+        
+    }
+    
+    private String printArrayDouble(double[] list) {
+        String fullList = "";
+        for (double number : list) {
+            fullList+= number + ", ";
+        }
+        return fullList;
+    }
+}

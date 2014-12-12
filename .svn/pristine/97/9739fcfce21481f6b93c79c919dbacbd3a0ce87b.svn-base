@@ -1,0 +1,41 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author chris
+ */
+public class BirthdayPresents extends AbstractCardAction {
+    
+    private int present = 10;
+    
+    public BirthdayPresents() {
+        
+    }
+    
+    /**
+     * Player gets a present from every other player in the game.
+     * @param player 
+     */
+    public void performAction(Player player) {
+        List<Player> players = new ArrayList(Game.getInstance().getPlayers());
+        Iterator<Player> playerIterator = players.iterator();
+        while(playerIterator.hasNext()) {
+            Player otherPlayer = playerIterator.next();
+            if (!otherPlayer.equals(player)) {
+                otherPlayer.forcedMoneyChange(-present, player);
+                player.optionalMoneyChange(present);
+            }
+        } 
+    }
+    
+}

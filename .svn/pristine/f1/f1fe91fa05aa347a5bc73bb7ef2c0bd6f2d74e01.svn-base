@@ -1,0 +1,68 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package PlayerTests.TDPlayerTests;
+
+import Model.Game;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import Model.Spaces.Site;
+import Model.Spaces.*;
+import Model.Players.*;
+import java.util.List;
+import static org.junit.Assert.*;
+import java.util.ArrayList;
+/**
+ *
+ * @author chris
+ */
+public class TDAIMakeBidTests extends TDTestEnvirorment{
+    
+    public TDAIMakeBidTests() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    @Test
+    public void testMortgageProperty() {
+        super.setUpTDTestEnvirorment();
+        
+        //Make sure an appropriate bid is returned.
+        
+        /**
+         * This should print a mixture of values.
+         */
+        for (int i = 0; i < 50; i++) {
+            int houseBid = this.tdPlayerOne.
+                    makeABidOnHouse(1, true, Game.getInstance().getPlayers());
+            System.out.println(houseBid);
+            int spaceToBidNumber = (int)Math.round(Math.random() *
+                    (Game.getInstance().getBoard().size() - 1));
+            Space spaceToBidOn = Game.getInstance().getBoard().get(spaceToBidNumber);
+            int propertyBid = this.tdPlayerOne.
+                    makeABid(spaceToBidOn,1, Game.getInstance().getPlayers());
+            System.out.println(propertyBid);
+        }
+    }
+    
+}

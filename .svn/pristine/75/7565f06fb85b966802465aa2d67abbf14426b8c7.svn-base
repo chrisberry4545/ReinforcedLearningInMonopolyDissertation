@@ -1,0 +1,72 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+
+/**
+ *
+ * @author chris
+ */
+public abstract class AI extends Player {
+    
+    public AI(int tokenNumber) {
+        super(tokenNumber);
+    }
+    
+    /**
+     * Ask player yes/no question
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    public abstract boolean askPlayerQuestion(String message, String title);
+    
+    /**
+     * Does nothing, AI's don't need to receive these messages.
+     * @param message to give player
+     * @param title of message
+     */
+    public void messagePlayer (String message, String title) {
+        //No point in messaging AI.
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    public abstract int askPlayerInJailOptions();
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    public abstract int askPlayerMoveOptions();
+        
+    /**
+     * Allows user to select from a list of Sites and returns the site 
+     * selected.
+     * @return the Site selected by the user.
+     */
+    public abstract Site chooseProperty();
+    
+    /**
+     * No need to do anything for AIs
+     */
+    public void showPlayerProperties() {
+        //Nothing to do.
+    }
+    
+    public abstract void buyBackMortgagedProperty();
+    
+    public abstract void offerAPropertyToAnotherPlayer();
+    
+    public abstract void assessAPropertyOffer(Space spaceOffered,
+            Player playerOffering, int priceOffered);
+    
+    public abstract void sellHouses();
+    
+}

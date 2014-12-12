@@ -1,0 +1,23 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+
+/**
+ *
+ * @author chris
+ */
+public class GetOutOfJailCard extends CardAction {
+    
+    public GetOutOfJailCard() {
+        
+    }
+    
+    @Override
+    public void performAction(Player player) {
+        player.addGetOutOfJailCard();
+    }
+}

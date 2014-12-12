@@ -1,0 +1,170 @@
+package monopoly;
+
+import Controller.ActionManager;
+import Model.GameStats;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.*;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.TDInputGenerators.TDInputGenerator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * A standard style run of my Program. Any different type of game can be run
+ * as long as the corresponding variables are entered.
+ * @author Chris Berry
+ */
+public class StandardRun {
+
+    /**
+     * Starts a standard run with the given variables.
+     * @param tdInputGen TDInputGen for the players to use.
+     * @param lambda the TDLambda network will be using.
+     * @param fileToSaveTo File name to save the result to.
+     * @param file_To_Load File name to load the network from.
+     * @param second_File_To_Load Loads a second AI from this file.
+     * @param starting_Runs Number of runs the AI is starting from.
+     * @param runsBeforeSave the number of runs to complete before saving the AI.
+     * @param totalNumberOfRuns the total number of runs to execute.
+     * @param numberOfNetworks the number of different networks in the game.
+     * @param numHumanPlayers the number of human controlled players.
+     * @param numRandomPlayers the number of random controlled players.
+     * @param numFullTDPlayers the number of full TD Players.
+     * @param numSimpleTDAIs the number of simple TD Players.
+     * @param numDBGenRandomAIs the number of database generating random AIs.
+     * @param numSmartBots the number of SmartBots to include. 
+     * @param numAIController the number of AI Controller bots to include.
+     * @param numTDHandcraftedFeatureAIs the number of TDHandcraftedFeature AIs to include.
+     * @param differentRunTypes true if games should randomly start from a Monopoly state.
+     * @param displayGraphics true if you want the graphics displayed (required if
+     * human players are to be included).
+     * @param newNetwork true if you want to start a new AI.
+     * @param fixedWeights N/A not used.
+     * @param blockLearning true if you want to block the AI learning.
+     * @param feedResultsToNet true if instead of a standard run, results should
+     * be fed to the network from the MoveDB.csv file.
+     * @param useWinTypeMatters true if the Critic where win types matter should
+     * be used (different rewards for different win types).
+     */
+    public static void standardRun(TDInputGenerator tdInputGen,
+            double lambda, String fileToSaveTo, String file_To_Load,
+            String second_File_To_Load, int starting_Runs,
+            int runsBeforeSave, int totalNumberOfRuns,
+            int numberOfNetworks, int numHumanPlayers, int numRandomPlayers,
+            int numFullTDPlayers, int numSimpleTDAIs, int numDBGenRandomAIs,
+            int numSmartBots, int numAIController, int numTDHandcraftedFeatureAIs,
+            boolean differentRunTypes, boolean displayGraphics, boolean newNetwork,
+            boolean fixedWeights, boolean blockLearning, boolean feedResultsToNet,
+            boolean useWinTypeMatters) {
+ 
+        int amountOfSaves = totalNumberOfRuns / runsBeforeSave;
+        boolean useExploratoryMoves;
+        if (blockLearning) {
+            useExploratoryMoves = false;
+        } else {
+            useExploratoryMoves = true;
+        }
+        int numInputNodes = tdInputGen.getNumInputNodes();
+        int numHiddenNodes = tdInputGen.getNumHiddenNodes();
+        int numOutputNodes = tdInputGen.getNumOutputNodes();
+        AbstractEvaluator evaluator;
+        if (newNetwork) {
+            if (!fixedWeights) {
+                evaluator = new AbstractEvaluator(lambda, numInputNodes, numHiddenNodes, numOutputNodes);
+            } else {
+                evaluator = new AbstractEvaluator(lambda, numInputNodes, numHiddenNodes, numOutputNodes);
+            }
+            evaluator.restartNetwork();
+            String fileName = fileToSaveTo;
+            evaluator.saveNet(fileName);
+            System.out.println("Saving new network as: " + fileName);
+        } else {
+            System.out.println("Loading: " + file_To_Load);
+            evaluator = new AbstractEvaluator(file_To_Load);
+        }
+        System.out.println("Learning blocked.. " + blockLearning);
+        System.out.println("Using exploratory moves.. " + useExploratoryMoves);
+        System.out.println("Number of networks.. " + numberOfNetworks);
+        AbstractEvaluator evaluator2;
+        Generalizer generalizer2;
+        Critic critic2 = null;
+        List<Critic> criticList = new ArrayList();
+        List<TDInputGenerator> inputGenList = new ArrayList();
+        if (numberOfNetworks == 2) {
+            if (!newNetwork) {
+                System.out.println("Loading Network 2: " + second_File_To_Load);
+                evaluator2 = new AbstractEvaluator(second_File_To_Load);
+                generalizer2 = new Generalizer(evaluator2);
+                critic2 = new Critic(generalizer2, numOutputNodes);
+                critic2.setBlockLearning(true);
+            }
+        }
+        GameStats.setUpGameStats(numHumanPlayers + numRandomPlayers + numFullTDPlayers + numSimpleTDAIs + numDBGenRandomAIs);
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic;
+        if (useWinTypeMatters) {
+            critic = new CriticWinTypeMattersV2(generalizer, numOutputNodes);
+            System.out.println("Using win type matters");
+        } else {
+            System.out.println("Using win type doesn't matter");
+            critic = new Critic(generalizer, numOutputNodes);
+        }
+        
+        critic.setBlockLearning(blockLearning);
+        ActionManager am = ActionManager.getInstance();
+        criticList.add(critic);
+        criticList.add(critic2);
+        inputGenList.add(tdInputGen);
+        inputGenList.add(tdInputGen);
+        if (!feedResultsToNet) {
+            for (int runs = 0; runs < amountOfSaves; runs++) {
+                for (int i = 0; i < runsBeforeSave; i++) {
+                    int runType = ActionManager.RUNTYPE_NORMALGAME;
+                    if (differentRunTypes) {
+                        Random random = new Random();
+                        runType = random.nextInt(ActionManager.RUNTYPE_RANDOMSTART);
+                    }
+                    if (numberOfNetworks < 2) {
+                        am.startNewGame(critic, tdInputGen, displayGraphics, 
+                                numHumanPlayers, numRandomPlayers, numFullTDPlayers, 
+                                numSimpleTDAIs, numDBGenRandomAIs, numSmartBots, 
+                                numAIController, numTDHandcraftedFeatureAIs,
+                                useExploratoryMoves, runType);
+                    } else {
+                        am.startNewGame(criticList, inputGenList, displayGraphics, 
+                                numHumanPlayers, numRandomPlayers, numFullTDPlayers, 
+                                numSimpleTDAIs, numDBGenRandomAIs, numSmartBots, 
+                                numAIController, numTDHandcraftedFeatureAIs,
+                                useExploratoryMoves, runType);
+                    }
+                }
+                System.out.println("Saving the file (Save number: " + runs + ").");
+                int startingRuns;
+                if (newNetwork) {
+                    startingRuns = 0;
+                } else {
+                    startingRuns = starting_Runs;
+                }
+                int totalRuns = (runs * runsBeforeSave) + runsBeforeSave + startingRuns;
+                String fileNameToSave = fileToSaveTo + totalRuns;
+                evaluator.saveNet(fileNameToSave);
+            }
+            int finalRuns = totalNumberOfRuns + starting_Runs;
+            String title = fileToSaveTo + finalRuns;
+            GameStats.writeToCSV(title + "GameStats.csv", GameStats.getCSVString());
+            GameStats.printWinValues();
+        } else {
+            System.out.println("Feeding results to network...");
+            if (!newNetwork) {
+                System.err.println("Error.. Not a new network.. Exiting..");
+                System.exit(0);
+            }
+            int numRums = FeedResultsToNetwork.feedResultsToNetwork(critic);
+            String fileNameToSaveTo = fileToSaveTo + numRums;
+            evaluator.saveNet(fileNameToSaveTo);
+            System.out.println("Saved Network: " + fileNameToSaveTo);
+        }
+    }
+    
+}

@@ -1,0 +1,245 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Controller;
+
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import Model.Players.*;
+import Display.BoardDisplay;
+import Model.*;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author chris
+ */
+public class ActionManager {
+    
+    private static ActionManager instance = null;
+    private BoardDisplay display;
+    private Board board;
+    private Game game;
+    
+    protected ActionManager() {
+    }
+    
+    public void startNewGame() {
+        ArrayList<Player> players = new ArrayList();
+        players.add(new RandomAI(0));
+        players.add(new RandomAI(1));
+        players.add(new RandomAI(2));
+        game = Game.newGame(players);
+        display = new BoardDisplay();
+        board = game.getBoard();
+        addPropertiesToBoardDisplay();
+        addPlayers();
+        startGame();
+    }
+ 
+    /**
+    * Returns an instance of the singleton class ActionManager
+    * @return ActionManager instance
+    */
+    public static ActionManager getInstance() {
+        if (instance == null) {
+            instance = new ActionManager();
+        }
+        return instance;
+    }
+    
+    private void addPropertiesToBoardDisplay() {
+        int counter = 0;
+        for (Space space : board) {
+            display.addSpaceToDisplay(counter,space.getName());
+            counter++;
+        }
+        display.revalidate();
+    }
+    
+    private void addPlayers() {
+        for (Player player : game.getPlayers()) {
+            display.addPlayerMarker(player.getToken(), 0);
+            //Puts the player at go.
+            player.setSpace(board.get(0));       
+        }
+        game.setUpPlayersForGameStart();
+        display.revalidate();
+    }
+    
+    public void startGame() {
+        while (!game.isFinished()) {
+            Player player = game.nextPlayer();
+            if (player.inJail()) {
+                player.increaseJailCounter();
+            }
+            takeTurn(player);
+        }
+        display.dispose();
+    }
+    
+    private void takeTurn(Player player) {
+        if (!player.inJail()) {
+                standardTurn(player);
+        } else {
+                inJailTurn(player);
+        }
+    }
+    
+    private void standardTurn(Player player) {
+        int n = player.askPlayerMoveOptions();
+        switch(n) {
+            case Player.ROLL_DICE : 
+                rollDiceToMove(player);
+                break;
+            case Player.BUY_HOUSES :
+                showHouseBuyingOptions(player);  
+                //Brings up options again after player makes a choice.
+                standardTurn(player);
+                break;
+            case Player.OFFER_PROPERTY :
+                player.makeAnOfferToAnotherPlayer();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.MORTGAGE_PROPERTIES :
+                player.mortgageProperties();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.SELL_HOUSES :
+                player.sellHouses();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.BUY_BACK_MORTGAGED_PROPERTIES :
+                player.buyBackMortgagedProperty();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.SHOW_PROPERTIES :
+                player.showPlayerProperties();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            
+        }
+    }
+    
+    private void inJailTurn(Player player) {
+        int n = player.askPlayerInJailOptions();
+        switch (n) {
+            //Pay to leave
+            case Player.PAY_TO_LEAVE : 
+                if (player.payToLeaveJail()) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                } else {
+                    player.messagePlayer("You don't have enough money "
+                            + "to leave jail.", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Roll to leave.
+            case Player.ROLL_TO_LEAVE : 
+                int diceRoll = player.rollToLeaveJail();
+                //Returns -1 if a double isn't rolled.
+                if (diceRoll != -1) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                    movePlayer(player, diceRoll);
+                } else {
+                    player.messagePlayer("You didn't roll a double.",
+                            "Still in jail");
+                    //Turn finishes in this case.
+                }
+                break;
+            //Use get out of jail card.
+            case Player.GET_OUT_OF_JAIL_CARD : 
+                if (player.useGetOutOfJailCard()) {
+                    player.messagePlayer("Used get out of jail card",
+                            "Out of Jail");
+                } else {
+                    player.messagePlayer("You don't have a get out of jail"
+                            + " card", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Buy houses.
+            case Player.JAIL_BUY_HOUSES : 
+                showHouseBuyingOptions(player);
+                takeTurn(player);
+                break;
+        }
+    }
+    
+    /**
+     * Performs the appropriate actions for a players turn.
+     */
+    private void rollDiceToMove(Player player) {
+        int diceRoll = player.rollForTurn();
+        movePlayer(player, diceRoll);
+    }
+    
+    /**
+     * Moves the player by a given amount.
+     * @param player to move
+     * @param moveAmount 
+     */
+    private void movePlayer(Player player, int moveAmount) {
+        int newSpace = game.movePlayer(player, moveAmount);
+        display.movePlayer(player.getToken(), newSpace);
+        display.updateStatPanel(player.getToken(), player.getMoney());
+        handleProperty(player, moveAmount); 
+    }
+    
+    
+    private void handleProperty(Player player, int diceRoll) {
+        Space landedOn = player.getCurrentSpace();  
+        landedOn.performAction(diceRoll, player);  
+    }
+    
+   
+    
+    /**
+     * Shows the house buying options for the current player.
+     */
+    private void showHouseBuyingOptions(Player player) {
+        Site site = player.choosePropertyForBuildingOn();
+        //Returns the site number selected.
+        if (site != null) {
+            String title = "";
+            String message = "";
+            switch (site.addHouse()) {
+                case Site.HOUSE_ADDED :
+                    message = "Added house to " + site.getName() +
+                    ". This now has " + site.getHouses();
+                    title = "Added house";
+                    break;
+                case Player.NOT_ENOUGH_MONEY :
+                    message = "You don't have enough money for another house";
+                    title = "Not enough money";
+                    break;
+//                case Site.TOO_MANY_HOUSES : 
+//                    message = "You've already got a hotel"
+//                        + " on this property";
+//                    title = "Already have a hotel";
+//                    break;
+//                case Site.MUST_BUY_HOUSES_ON_OTHER_PROPERTIES :
+//                    message = "You must buy houses on other properties first";
+//                    title = "Buy houses elsewhere first.";
+//                    break;
+            }
+            player.messagePlayer(message, title);
+            
+        } else { // Happens if there are no properties avaliable and
+                 // -1 is returned from sitenumber.
+            player.messagePlayer("Not enough properties",
+                                        "Not enough properties");
+        }    
+    }
+    
+    
+}

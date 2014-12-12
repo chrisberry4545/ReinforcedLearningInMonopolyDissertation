@@ -1,0 +1,34 @@
+package Model.Cards;
+
+import Model.Game;
+import Model.Players.Player;
+import Model.Spaces.SpaceEnums;
+
+/**
+ * The action for the various 'Go To Jail' Cards from the Game of Monopoly.
+ * @author Chris Berry
+ */
+public class GoToJail extends AbstractCardAction{
+    
+    /**
+     * A default go to jail card.
+     */
+    public GoToJail() {
+        
+    }
+
+/**
+ * Key method.
+ */    
+    /**
+     * Moves the player to jail (they don't collect 200 for passing go), and 
+     * sets them in jail.
+     * @param player who drew the card.
+     * @param card for which the action is being called from.
+     */
+    @Override
+    public void performAction(Player player, Card card) {
+        player.sendToJail();
+    }
+    
+}

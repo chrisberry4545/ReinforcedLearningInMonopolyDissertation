@@ -1,0 +1,32 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Spaces;
+
+import Model.Bank;
+import Model.Players.Player;
+
+/**
+ *
+ * @author chris
+ */
+public class Tax extends Space {
+    
+    private int taxCost;
+    
+    public Tax(String name, int taxAmount) {
+        super(name, -1, -1);
+        this.taxCost = taxAmount;
+        this.setOwner(Bank.getInstance());
+    }
+    
+    public int performAction(int dice, Player p) {
+        return taxCost;
+    }
+    
+    public int getFullMortgageValue() {
+        return 0;
+    }
+    
+}

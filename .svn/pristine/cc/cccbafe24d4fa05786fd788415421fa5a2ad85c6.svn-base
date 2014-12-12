@@ -1,0 +1,36 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Cards;
+
+import Model.Players.Player;
+import Model.*;
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ *
+ * @author chris
+ */
+public class ChairmanOfTheBoard extends AbstractCardAction {
+   
+    private int amountToPayEachPlayer = 50;
+    
+    public ChairmanOfTheBoard() {
+        
+    }
+    
+    @Override
+    public void performAction(Player currentPlayer) {
+        List<Player> allPlayers = 
+                new ArrayList(Game.getInstance().getPlayers());
+        for (Player otherPlayer : allPlayers) {
+            if (!otherPlayer.equals(currentPlayer)) {
+                otherPlayer.optionalMoneyChange(amountToPayEachPlayer);
+                currentPlayer.forcedMoneyChange(-amountToPayEachPlayer,
+                        otherPlayer);
+            }
+        }
+    }
+}

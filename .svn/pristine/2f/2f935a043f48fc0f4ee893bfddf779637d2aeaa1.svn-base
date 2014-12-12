@@ -1,0 +1,321 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JOptionPane;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.JSpinner;
+
+/**
+ *
+ * @author chris
+ */
+public class HumanPlayer extends Player{
+    
+    public HumanPlayer(int setToken) {
+        super(setToken);
+    }
+    
+    /**
+     * Ask player yes/no question
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean askPlayerQuestion(String message, String title) {
+        int response = JOptionPane.showConfirmDialog(BoardDisplay.getInstance(),
+                message, title, JOptionPane.YES_NO_OPTION);
+        if (response == JOptionPane.YES_OPTION) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Messages the player with some information.
+     * @param message to give player
+     * @param title of message
+     */
+    @Override
+    public void messagePlayer (String message, String title) {
+        JOptionPane.showMessageDialog(BoardDisplay.getInstance(),
+                message, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        Object[] options = {"Pay to leave jail", "Roll To leave",
+                    "Use get out of jail card", "Buy houses"};
+        int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "In Jail",
+                    "In Jail",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+        return n;        
+    }
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerMoveOptions() {
+        Object[] options = {"Roll", "Buy houses", "Offer a property", 
+            "Mortgage Properties", "Sell Houses",
+            "Buy back mortgaged properties", "View properties"};
+        int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose an option",
+                    "Player " + token +"'s Turn",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+        return n;
+    }
+        
+    /**
+     * Allows user to select from a list of Sites and returns the site 
+     * selected.
+     * @return the Site selected by the user.
+     */
+    @Override
+    public Site chooseProperty() {
+        ArrayList<String> siteNames = new ArrayList();
+        for (Site sites : getSites()) {
+            siteNames.add(sites.getName());
+        }
+        if (siteNames.size() > 0) {
+            Object[] options = siteNames.toArray();
+            int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose a property",
+                    "Choose a property",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            return getSites().get(n);
+        }
+        return null;
+    }
+    
+    /**
+     * Allows user to select from a list of possible to build on and
+     * returns the site selected.
+     * @return the Site selected by the user.
+     */
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        List<Space> sitesCanBeBuiltOn = getSitesWhichCanBeBuiltOn();
+        return (Site)selectFromListOfProperties(sitesCanBeBuiltOn,
+                "Choose a Property", "Choose a property to build on");
+    }
+    
+    /**
+     * Allows the player to sell houses on properties they own.
+     */
+    @Override
+    public void sellHouses() {
+        Site property = (Site)selectFromListOfProperties(getPropertiesWithHouses(),
+                "Sell houses",
+                "Select the property to sell houses on");
+        int numOfHousesToSell = showIntSpinner(1, property.getHouses());
+        property.returnHouses(numOfHousesToSell);
+    }
+    
+    @Override
+    public void mortgageProperties() {
+        List<Space> properties = getMortgagableProperties();
+        if (properties.size() > 0) {
+            Space toMortgage = selectFromListOfProperties(properties,
+                    "Choose a Property", "Choose a property to mortgage");
+            toMortgage.mortgageProperty();
+        } else {
+            messagePlayer("You don't have any properties to mortgage",
+                    "No mortgable properties");
+        }
+    }
+    
+    /**
+     * Show the properties the player currently owns.
+     */
+    @Override
+    public void showPlayerProperties() {
+        String spacesOwned = "";
+        for (Space space :this.getProperties()) {
+            spacesOwned += space.getName();
+            if (space.getClass().equals(Site.class)) {
+                Site site = (Site) space;
+                spacesOwned += " (" + site.getHouses() + ") ";
+            }
+            spacesOwned += '\n';
+        }
+        messagePlayer(spacesOwned, "Properties Owned");
+    }
+    
+    @Override
+    public void offerAPropertyToAnotherPlayer() {
+        if (this.getProperties().size() > 0) {
+            Space spaceToOffer = selectFromListOfProperties(this.getProperties(),
+                "Select a Property", "Choose a Property to offer to another "
+                + "player");
+            Player playerToOfferTo =
+                    selectFromListOfPlayers(Game.getInstance().getPlayers());
+            int price = selectAPrice();
+            playerToOfferTo.assessAPropertyOffer(spaceToOffer, this, price);
+        } else {
+            messagePlayer("You don't have any properties", "Not enough "
+                    + "properties");
+        }
+    }
+    
+    @Override
+    public void assessAPropertyOffer(Space spaceOffered, Player playerOffering,
+                                        int priceOffered) {
+        Object[] options = {"Accept offer", "Decline Offer"};
+        int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Do you want to pay P" + playerOffering.getToken() + '\n' 
+                    + priceOffered + " for " + spaceOffered.getName() + "?",
+                    "New offer",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+        //If deal is accepted.
+        if (n == JOptionPane.YES_OPTION) {
+            purchasePropertyFromOtherPlayer(spaceOffered, playerOffering,
+                    priceOffered);
+        }
+    }
+    
+    @Override
+    public int makeABid(Space property, int minimumBid) {
+        //Player needs to have enough money.
+        if (this.getMoney() >= minimumBid &&
+                askPlayerQuestion("Do you want to bid on " + property.getName(),
+                "Bid on property?")) {
+            return showIntSpinner(minimumBid, this.getMoney());
+        }
+        return Player.LEAVE_BIDDING_PROCESS;
+    }
+    
+    /**
+     * Gives users dialog to select a property from a List of Property Names.
+     * @param names List of the property names.
+     * @return the space selected by the user.
+     */
+    private Space selectFromListOfProperties(List<Space> names,
+            String title, String message) {
+        List<String> siteNames = new ArrayList();
+        for (Space sites : names) {
+            siteNames.add(sites.getName());
+        }
+        if (siteNames.size() > 0) {
+            Object[] options = siteNames.toArray();
+            int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    message, title,
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            if (n != -1) {
+                return names.get(n);
+            } else {
+                return null;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Allows the user to select a player from a list of players.
+     * @param players to select between.
+     * @return the player selected.
+     */
+    private Player selectFromListOfPlayers(List<Player> players) {
+        List<String> playerNames = new ArrayList();
+        for (Player player : players) {
+            String pName = "P" + player.getToken();
+            playerNames.add(pName);
+        }
+        if (playerNames.size() > 0) {
+            Object[] options = playerNames.toArray();
+            int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose a player to offer the property to",
+                    "Choose a player to offer the property to",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            return players.get(n);
+        }
+        return null;
+    }
+    
+    /**
+     * Allows the player to select an integer and returns this value.
+     * @return int chosen by the player.
+     */
+    public int selectAPrice() {
+        int maxPrice = 0;
+        for (Player p : Game.getInstance().getPlayers()) {
+            if (p.getMoney() > maxPrice) {
+                maxPrice = p.getMoney();
+            }
+        }
+        return showIntSpinner(1, maxPrice);
+    }
+    
+    private int showIntSpinner(int minValue, int maxValue) {
+        SpinnerNumberModel sModel = 
+                new SpinnerNumberModel(minValue, minValue, maxValue, 1);
+        JSpinner spinner = new JSpinner(sModel);
+        JOptionPane.showMessageDialog(BoardDisplay.getInstance(), spinner);
+        if (sModel.getNumber().intValue() < 1) {
+            messagePlayer("Please choose a valid value", 
+                    "Select a valid value");
+            //Recursively calls itself until the user selects a valid value.
+            sModel.setValue(selectAPrice());
+        }
+        return sModel.getNumber().intValue();
+    }
+    
+    @Override
+    public void buyBackMortgagedProperty() {
+        if (getMortgagedProperties().size() > 0) {
+            Space toBuyBack = selectFromListOfProperties(getMortgagedProperties(),
+                "Buy back property","Choose a property to buy back");
+            //Alert the player if the re-mortgaging fails.
+            if (!toBuyBack.unMortgageProperty()) {
+                messagePlayer("You can't afford to buy this back", 
+                        "Not enough money");
+            }
+        } else {
+            messagePlayer("You don't have any mortgaged properties",
+                    "No mortgaged properties");
+        }
+    }
+     
+    
+}

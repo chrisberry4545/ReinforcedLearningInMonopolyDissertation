@@ -1,0 +1,143 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package BoardOrderTests;
+
+import Model.Game;
+import Model.Board;
+import Model.Spaces.Space;
+import Model.Spaces.Site;
+import GeneralTestMethods.GeneralTestMethods;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class PropertyCostsTest extends GeneralTestMethods{
+    
+    private Board board;
+    
+    public PropertyCostsTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    @Test
+    public void propertyCostsTest() {
+        super.setUpGameWithOnePlayerAndOtherPlayer(Game.PLAYER_STARTING_MONEY);
+        board = Game.getInstance().getBoard();
+        
+        correctValues(1, 60, 30, 2,10,30,90,160,250);
+        correctValues(3,60,30,4,20,60,180,320,450);
+        correctValues(5,200,100);
+        correctValues(6,100,50,6,30,90,270,400,550);
+        correctValues(8,100,50,6,30,90,270,400,550);
+        correctValues(9,120,60,8,40,100,300,450,600);
+        correctValues(11,140,70,10,50,150,450,625,750);
+        correctValues(12,150,75);
+        correctValues(13,140,70,10,50,150,450,625,750);
+        correctValues(14,160,80,12,60,180,500,700,900);
+        correctValues(15,200,100);
+        correctValues(16,180,90,14,70,200,550,750,950);
+        correctValues(18,180,90,14,70,200,550,750,950);
+        correctValues(19,200,100,16,80,220,600,800,1000);
+        correctValues(21,220,110,18,90,250,700,875,1050);
+        correctValues(23,220,110,18,90,250,700,875,1050);
+        correctValues(24,240,120,20,100,300,750,925,1100);
+        correctValues(25,200,100);
+        correctValues(26,260,130,22,110,330,800,975,1150);
+        correctValues(27,260,130,22,110,330,800,975,1150);
+        correctValues(28,150,75);
+        correctValues(29,280,140,24,120,360,850,1025,1200);
+        correctValues(31,300,150,26,130,390,900,1100,1275);
+        correctValues(32,300,150,26,130,390,900,1100,1275);
+        correctValues(34,320,160,28,150,450,1000,1200,1400);
+        correctValues(35,200,100);
+        correctValues(37,350,175,35,175,500,1100,1300,1500);
+        correctValues(39,400,200,50,200,600,1400,1700,2000);
+    }
+    
+    private void correctValues(int boardNumber,int predictedCost,
+            int predictedMortgageRate) {
+        Space spaceToAnalyse = board.get(boardNumber);
+        if (spaceToAnalyse.getIntialCost() == predictedCost) {
+            System.out.println("Test successful: " + spaceToAnalyse.getName() +
+                    " has the correct cost of " + predictedCost); 
+        } else {
+            fail(spaceToAnalyse.getName() + " was expected to have a cost of "
+                    + predictedCost + " but actually had a cost of " +
+                    spaceToAnalyse.getIntialCost());
+        }
+        
+        if (spaceToAnalyse.getMortgageRate() == predictedMortgageRate) {
+            System.out.println("Test successful: " + spaceToAnalyse.getName() +
+                    " has the correct mortgage rate of " + predictedMortgageRate);
+        } else {
+            fail(spaceToAnalyse.getName() + " was expected to have a mortgage "
+                    + "rate of " + predictedMortgageRate + " but actually had "
+                    + "one of " + spaceToAnalyse.getMortgageRate());
+        }
+    }
+    
+    private void correctValues(int boardNumber, int predictedCost,
+            int predictedMortgageRate,int noHousesRent,
+            int oneHouseRent, int twoHouseRent,
+            int threeHouseRent, int fourHouseRent, int hotelRent) {
+        correctValues(boardNumber,predictedCost,predictedMortgageRate);
+        Site spaceToAnalyse = (Site)board.get(boardNumber);
+        
+        checkRentIsCorrect(spaceToAnalyse,noHousesRent);
+        
+        spaceToAnalyse.addHouseForFree();
+        checkRentIsCorrect(spaceToAnalyse, oneHouseRent);
+        
+        spaceToAnalyse.addHouseForFree();
+        checkRentIsCorrect(spaceToAnalyse, twoHouseRent);
+        
+        spaceToAnalyse.addHouseForFree();
+        checkRentIsCorrect(spaceToAnalyse, threeHouseRent);
+        
+        spaceToAnalyse.addHouseForFree();
+        checkRentIsCorrect(spaceToAnalyse, fourHouseRent);
+        
+        spaceToAnalyse.addHouseForFree();
+        checkRentIsCorrect(spaceToAnalyse, hotelRent);
+        
+        //To make sure bank has enough houses.
+        spaceToAnalyse.returnHousesForFree(5);
+    }
+    
+    private void checkRentIsCorrect(Site site, int predictedRent) {
+        if (site.getRent() == predictedRent) {
+            System.out.println("Test succesful: Rent is as predicted (" +
+                    predictedRent + ").");
+        } else {
+            fail("A rent of " + predictedRent + " was predicted but the property "
+                    + "returned a rent of " + site.getRent() + " for the site "
+                    + site.getName());
+        }
+    }
+}

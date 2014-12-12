@@ -1,0 +1,172 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package monopoly;
+
+import Controller.ActionManager;
+import Model.GameStats;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.TDInputGenerator;
+import Model.Players.ThirdTDPlayer;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author Chris
+ */
+public class ELOGauntlet {
+    
+    public static void ELOGauntlet2Players(String playersFile, 
+            TDInputGenerator playersInputGen, int numOutputs) {
+        
+        System.out.println("Running ELO Tests..");
+        int gamesToPlay = 250;
+        
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        /**
+         * Vs random AI.
+         */
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 1;
+        int numFullTDPlayers = 1;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        
+        GameStats.setUpGameStats(numHumanPlayers + numRandomPlayers + numFullTDPlayers
+                + numSimpleTDAIs + numDBGenRandomAIs);
+        
+        ActionManager am = ActionManager.getInstance();
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(playersCritic, playersInputGen, false,
+                                    numHumanPlayers, numRandomPlayers,
+                                numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                                useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+        }
+        int winsVRandom = am.getP1Victories();
+        double percWinRandom = (double)winsVRandom/gamesToPlay;
+        am.resetVictories();
+        
+        /**
+         * Vs TD AI V3 5,000 self plays.
+         */
+        int tdAIV3Outputs = 1;
+        String tdAIV3_5K = "June-19-2013-lambda0-9-runs5000";
+        
+        int winsVTDAI5K = runTestForTDAI(tdAIV3_5K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay);
+        double percWinTDAI5K = (double)winsVTDAI5K/gamesToPlay;
+        
+        
+        /**
+         * Vs TD AI V3 20,000 self plays.
+         */
+        String tdAIV3_20K = "June-19-2013-lambda0-9-runs20000";
+        
+        int winsVTDAI20K = runTestForTDAI(tdAIV3_20K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay);
+        double percWinTDAI20K = (double)winsVTDAI20K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V3 40,000 self plays.
+         */
+        String tdAIV3_40K = "June-19-2013-lambda0-9-runs40000";
+        
+        int winsVTDAI40K = runTestForTDAI(tdAIV3_40K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay);
+        double percWinTDAI40K = (double)winsVTDAI40K/gamesToPlay;
+        
+        /**
+         * Vs TD AI V3 100,000
+         */
+        String tdAIV3_100K = "June-19-2013-lambda0-9-runs100000";
+        
+        int winsVTDAI100K = runTestForTDAI(tdAIV3_100K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay); 
+        double percWinTDAI100K = (double)winsVTDAI100K/gamesToPlay;
+        
+        /**
+         * Vs TD Lambda0 V3.1 40,000
+         */
+        String tdAIV3_1_40K = "June-27-2013-lambda0-runs40000";
+        
+        int winsVTDAILamda0_40K = runTestForTDAI(tdAIV3_1_40K, tdAIV3Outputs, playersCritic,
+                playersInputGen, gamesToPlay); 
+        double percWinTDAILambda0_40K = (double)winsVTDAILamda0_40K/gamesToPlay;
+        
+        
+        GameStats.writeToCSV("GameStats.csv", GameStats.getCSVString());
+        GameStats.writeToCSV("OfferedDeals.csv", GameStats.getOfferedDealCSVString());
+        GameStats.writeToCSV("AcceptedDeals.csv", GameStats.getCompletedDealCSVString());
+        
+        System.out.println("Max money: " + ActionManager.getMaxMoney());
+        GameStats.printHighestWinValue();
+        
+        
+        System.out.println("Results for " + playersFile);
+        System.out.println("Wins vs Random AI: " + winsVRandom 
+                + " ("  + percWinRandom + "%)");
+        System.out.println("Wins vs TD V3 5,000: " + winsVTDAI5K 
+                + " (" + percWinTDAI5K + "%)");
+        System.out.println("Wins vs TD V3 20,000: " + winsVTDAI20K 
+                + " (" + percWinTDAI20K + "%)");
+        System.out.println("Wins vs TD V3 40,000: " + winsVTDAI40K
+                + " (" + percWinTDAI40K + "%)");
+        System.out.println("Wins vs TD V3 100,000: " + winsVTDAI100K 
+                + " (" + percWinTDAI100K + "%)");
+        System.out.println("Wins vs TD V3.1 40,000: " + winsVTDAILamda0_40K
+                + " (" + percWinTDAILambda0_40K + "%)");
+    }
+    
+    public static int runTestForTDAI(String fileName, int outputNodes,
+            Critic playersCritic, TDInputGenerator playersInputGen,
+            int gamesToPlay) {
+        AbstractEvaluator otherPlayerEval = new AbstractEvaluator(fileName);
+        Generalizer otherPlayerGen = new Generalizer(otherPlayerEval);
+        Critic otherPlayerCritic = new Critic(otherPlayerGen, outputNodes);
+        otherPlayerCritic.setBlockLearning(true);
+        List<Critic> criticList = new ArrayList();
+        criticList.add(playersCritic);
+        criticList.add(otherPlayerCritic);
+        List<TDInputGenerator> inputGenList = new ArrayList();
+        ThirdTDPlayer v3InputGen = new ThirdTDPlayer();
+        inputGenList.add(playersInputGen);
+        inputGenList.add(v3InputGen);
+        
+        int winsVOtherAI = runGames(gamesToPlay, criticList, inputGenList, 2);
+        ActionManager.getInstance().resetVictories();
+        return winsVOtherAI;
+    }
+    
+    public static int runGames(int gamesToPlay, List<Critic> criticList,
+            List<TDInputGenerator> inputGenList, int numTDPlayers) {
+        ActionManager am = ActionManager.getInstance();
+        
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 0;
+        int numFullTDPlayers = numTDPlayers;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 0;
+        
+        boolean useExploratoryMoves = false;
+        
+        for (int i = 0; i < gamesToPlay; i++) {
+            am.startNewGame(criticList,inputGenList, false,
+                                numHumanPlayers, numRandomPlayers,
+                            numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                            useExploratoryMoves, ActionManager.RUNTYPE_NORMALGAME);
+        }
+        
+        
+        return am.getP0Victories();
+    }
+    
+}

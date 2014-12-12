@@ -1,0 +1,109 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package GameMechanicsTesting;
+
+import Model.Players.TestAI;
+import GeneralTestMethods.GeneralTestMethods;
+import Model.*;
+import Model.Spaces.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class AuctionTest extends GeneralTestMethods {
+    
+    public AuctionTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    @Test
+    public void auctionTest() {
+        for (int numPlayers = 1; numPlayers < Game.MAX_PLAYERS; numPlayers++) {
+            //House auction test
+            houseAuctionTest(numPlayers, 100, 150, true);
+            //Hotel auction test
+            houseAuctionTest(numPlayers, 100, 150, false);            
+            //Property auction tests
+            propertyAuctionTest(numPlayers, 100, 150);
+        }
+        
+    }
+    
+    private void houseAuctionTest(int numOtherPlayers, int bidAmount,
+            int startingMoney, boolean houseAuction) {
+        System.out.println("Starting house auction test");
+        super.setUpGameWithRandomrOfPropertysAndHouses(startingMoney,
+                numOtherPlayers);
+        TestAI player = (TestAI) testPlayer;
+        int playersMoney = player.getMoney();
+        int expectedMoney = playersMoney - bidAmount;
+        player.setBidAmount(bidAmount);
+        Game.getInstance().startAuction(1, houseAuction);
+        if (player.getMoney() == expectedMoney) {
+            System.out.println("Test Successful: Player has paid the"
+                    + " house bid amount "
+                    + "of " + bidAmount);
+        }
+    }
+    
+    private void propertyAuctionTest(int numOtherPlayers, int bidAmount,
+            int startingMoney) {
+        for (int i = 0; i < 50; i++) {
+            super.setUpGameWithRandomrOfPropertysAndHouses(startingMoney, numOtherPlayers);
+            Site property = Game.getInstance().getBoard().getAllSites().get(0);
+            if (Game.getInstance().getCurrentPlayer().equals(testPlayer)) {
+                Game.getInstance().nextPlayer();
+            }
+            property.setOwner(null);
+            TestAI player = (TestAI) testPlayer;
+            int playersMoney = player.getMoney();
+            int expectedMoney = playersMoney - bidAmount;
+            player.setBidAmount(bidAmount);
+            Game.getInstance().startAuction(property, false);
+            if (player.getMoney() == expectedMoney) {
+                System.out.println("Test Successful: Player has paid the "
+                        + "property bid amount "
+                        + "of " + bidAmount);
+            } else {
+                fail("Player hasn't lost the correct amount of money. They were"
+                        + " supposed to loose " + bidAmount + " resulting in a "
+                        + "them having " + expectedMoney + " overall, however they"
+                        + " still have " + player.getMoney());
+            }
+            if (player.getSites().contains(property)) {
+                int totalPlayers = numOtherPlayers + 1;
+                System.out.println("Test Successful: Player now owns the property"
+                        + " (" + totalPlayers + " players)");
+            } else {
+                fail("Player doesn't own the property he bid on");
+            }
+            
+        }
+    }
+}

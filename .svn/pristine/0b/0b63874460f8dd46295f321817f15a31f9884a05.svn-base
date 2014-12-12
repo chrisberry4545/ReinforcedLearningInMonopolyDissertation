@@ -1,0 +1,51 @@
+package Model;
+
+
+/**
+ * A purchasable property in Monopoly.
+ * @author chris
+ */
+public abstract class Property {
+    
+    protected boolean mortgaged;
+    protected int mortgageRate;
+    protected String name;
+    protected Player owner;
+    protected int intialCost;
+    protected int spaceNumber;
+    
+    protected static int maxSpaceNumber = 0;
+    
+    public Property(String name,int intialCost, int mortgageRate) {
+        this.spaceNumber = maxSpaceNumber;
+        this.name = name;
+        this.intialCost = intialCost;
+        this.mortgaged = false;
+        this.mortgageRate = mortgageRate;
+        owner = null;
+        maxSpaceNumber++;
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public int getSpaceNumber() {
+        return spaceNumber;
+    }
+    
+    public abstract int getRent(int diceRoll);
+    
+    public Player getOwner() {
+        return owner;
+    }
+    
+    public int getIntialCost() {
+        return intialCost;
+    }
+    
+    public void setOwner(Player player) {
+        owner = player;
+        player.addProperty(this);
+    }
+}

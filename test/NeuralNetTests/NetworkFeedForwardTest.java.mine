@@ -1,0 +1,91 @@
+package NeuralNetTests;
+
+import Model.Players.NeuralNetwork.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import PlayerTests.TDPlayerTests.TDTestEnvirorment;
+import static org.junit.Assert.*;
+
+/**
+ * Tests a part of the critic class to ensure it is doing the correct thing.
+ * @author Chris Berry
+ */
+public class NetworkFeedForwardTest extends TDTestEnvirorment{
+    
+    public NetworkFeedForwardTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    /**
+     * Tests if the feedForward method is altering the values of the nodes.
+     */
+    @Test
+    public void feedForwardTest() {
+        super.setUpTDTestEnvirorment();
+        Network net = critic.getGeneralizer().getEvaluator().getNet();
+        double[] intialOutputValues = new double[net.getOutputLayer().size()];
+        for (int i = 0; i < net.getOutputLayer().size(); i++) {
+            intialOutputValues[i] = net.getOutputLayer().get(i).getValue();
+        }
+        int inputSize = net.getInputs().size();
+        double[] inputs = new double[inputSize];
+        //Set all inputs to 1.
+        for (int i = 0; i < inputSize; i++) {
+            inputs[i] = 1;
+        }
+        net.feedForward(inputs);
+        //Make sure all the values are different.
+        for (int i = 0; i < intialOutputValues.length; i++) {
+            if (intialOutputValues[i] == 
+                    net.getOutputLayer().get(i).getValue()) {
+                fail("The weight of the node, " + i + " hasn't changed. It is "
+                        + "still " + net.getOutputLayer().get(i).getValue());
+            }
+        }
+        
+        System.out.println("Test successful. All hidden nodes have been "
+                + "successfully updated");
+        controlCase();
+    }
+    
+    /**
+     * Checks the result is the same if nothing is done.
+     */
+    public void controlCase() {
+        super.setUpTDTestEnvirorment();
+        Network net = critic.getGeneralizer().getEvaluator().getNet();
+        double[] intialOutputValues = new double[net.getOutputLayer().size()];
+        for (int i = 0; i < net.getOutputLayer().size(); i++) {
+            intialOutputValues[i] = net.getOutputLayer().get(i).getValue();
+        }
+        //Make sure all the values are different.
+        for (int i = 0; i < intialOutputValues.length; i++) {
+            if (intialOutputValues[i] != 
+                    net.getOutputLayer().get(i).getValue()) {
+                fail("The weight of the node, " + i + " has changed. It is "
+                        + net.getOutputLayer().get(i).getValue());
+            }
+        }
+        
+        System.out.println("Test successful. All hidden nodes have been "
+                + "successfully updated");
+    }
+        
+}

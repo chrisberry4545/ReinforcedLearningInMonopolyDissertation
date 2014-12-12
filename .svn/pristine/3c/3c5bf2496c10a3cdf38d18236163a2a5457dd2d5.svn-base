@@ -1,0 +1,54 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package CardTests;
+
+import Model.Cards.Card;
+import Model.Cards.GetOutOfJailCard;
+import Model.Game;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class GetOutOfJailCardTest extends CardTestTemplate{
+    
+    public GetOutOfJailCardTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+     @Test
+     public void testGetOutOfJail() {
+         setUpGameWithPlayer(Game.PLAYER_STARTING_MONEY,1);
+         Card card = new Card("Get out of jail",
+                new GetOutOfJailCard(), false);
+         int startingGOJCards = testPlayer.getNumberOfGetOutOfJailCards();
+         card.getAction().performAction(testPlayer);
+         int finishingGOJCards = testPlayer.getNumberOfGetOutOfJailCards();
+         if (startingGOJCards + 1 == finishingGOJCards) {
+             System.out.println("Test Succesful: player had " + startingGOJCards
+                     + " get out of jail card and now has " + finishingGOJCards);
+         } else {
+             fail("Player doesn't seem to have been given the correct amount"
+                     + " of get out of jail cards.");
+         }
+         
+     }
+}

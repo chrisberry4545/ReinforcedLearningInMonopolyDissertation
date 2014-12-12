@@ -1,0 +1,75 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
+/**
+ *
+ * @author Chris
+ */
+public class DatabaseGenRandomAI extends RandomAI {
+    
+    private static int lineCount = 0;
+    private TDInputGenerator inputGen;
+    
+    public DatabaseGenRandomAI(int number, TDInputGenerator inputGen) {
+        super(number);
+        this.inputGen = inputGen;
+    }
+    
+    @Override
+    public boolean askPlayerMoveOptions() {
+        writeStateToDatabase();
+        return super.askPlayerMoveOptions();
+    }
+    
+    @Override
+    public int askPlayerInJailOptions() {
+        writeStateToDatabase();
+        return super.askPlayerInJailOptions();
+    }
+    
+    public void writeStateToDatabase() {
+        lineCount++;
+        double[] inputs = inputGen.getCurrentInputs(this.getNumber());
+        writeToFile(inputs);
+    }
+    
+    private static void writeToFile(double[] a){
+        try {
+            FileWriter fw = new FileWriter("MoveDB.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            for (double n: a){
+                bw.write(n + ",");
+            }
+            bw.newLine();
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+}
+    
+    @Override
+    public void hasWon() {
+        lineCount++;
+        try {
+            FileWriter fw = new FileWriter("MoveDB.csv", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write("End " + this.getNumber());
+            bw.newLine();
+            bw.close();
+        } catch (IOException e) {
+            System.err.print("Unable to write to file " + "MoveDB.csv"+ ".");
+            e.printStackTrace();
+        }
+        System.out.println("Line count: " + lineCount);
+        
+    }
+    
+}

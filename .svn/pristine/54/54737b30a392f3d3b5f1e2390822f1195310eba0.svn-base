@@ -1,0 +1,171 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Model.DealOffer;
+import Model.Game;
+import Model.Spaces.Space;
+import java.util.List;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
+
+/**
+ *
+ * @author chris
+ */
+public class SmartBot extends AI {
+    
+    private final int biddingLowerLimit = 500;
+    private final int propertyBuyingLowerLimit = 200;
+    private final int roundsBeforeStayInJail = 40;
+    private final int wontPayToLeaveJailMoney = 200;
+    private final int houseBuyingLowerLimit = 200;   
+    public SmartBot(int tokenNumber) {
+        super(tokenNumber);
+    }
+
+/**
+ * Other abstract methods AI's cover.
+ */    
+    /**
+     * Ask player if they want to buy a property.
+     * @param property to ask about.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    @Override
+    public boolean 
+            askPlayerIfTheyWantToBuyProperty(Space property) {
+        int moneyLeft = this.getMoney() - property.getValue();
+        if (moneyLeft > propertyBuyingLowerLimit) {
+            super.buyProperty(property);
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    @Override
+    public int askPlayerInJailOptions() {
+        if (Game.getInstance().getRoundCount() > roundsBeforeStayInJail
+                || this.getMoney() < wontPayToLeaveJailMoney) {
+            int diceRoll = this.rollToLeaveJail();
+            //Returns -1 if a double isn't rolled.
+            if (diceRoll == -1) {
+                //Turn finishes in this case.
+                return Player.STILL_IN_JAIL_TURN_OVER;
+            } else {
+                return diceRoll;
+            }
+        }
+            
+        if (this.payToLeaveJail()) {
+            return Player.rollDice();
+        } else {
+            System.err.println("AI trying to pay to leave jail when it can't"
+                    + "afford to.");
+            return Player.STILL_IN_JAIL_TURN_NOT_OVER;
+        }    
+            
+    }
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    @Override
+    public abstract boolean askPlayerMoveOptions();
+    
+    /**
+     * Gets the player to assess a deal offer.
+     * @param offer which to assess.
+     * @param playerOffering player who has made the offer.
+     */
+    @Override
+    public abstract boolean assessAnOffer(DealOffer offer, Player playerOffering);
+    
+    /**
+     * Asks the player if they would like to make a bid on a property.
+     * @param property to bid on.
+     * @param minimumBid minimum amount a player can bid.
+     * @param playersInTheRunning A List of the other players in the running.
+     * @return the player's bid, or a value representing the player wishes
+     * to leave the bidding process.
+     */
+    @Override
+    public int makeABid(Space property, int minimumBid,
+                                List<Player> playersInTheRunning) {
+        
+        return Player.LEAVE_BIDDING_PROCESS;
+    }
+    
+    /**
+     * Asks the player if they want to make a bid on a house.
+     * @param minBid the minimum a player can bid on a house.
+     * @param isHouse true if the player is bidding on a house, false if it
+     * is a hotel.
+     * @param playersInRunning A List of the other players in the running.
+     * @return the player's bid, or a value represting the player wishes
+     * to leave the bidding process.
+     */
+    @Override
+    public abstract int makeABidOnHouse(int minBid, boolean isHouse,
+                                List<Player> playersInTheRunning);
+    /**
+     * The player receives a list of properties and becomes the owner of them
+     * all. Sometimes he will be required to pay a mortgage fee on these if
+     * they are already mortgaged.
+     * @param properties that player has received.
+     */
+    @Override
+    public abstract void receiveProperty(List<Space> properties);
+    
+    /**
+     * This AI doesn't have to respond to winning.
+     */
+    @Override
+    public void hasWon() {
+        //Nothing to do.
+    }
+    
+    /**
+     * This AI doesn't have to respond to loosing.
+     */
+    @Override
+    public void hasLost() {
+        //Nothing to do.
+    }
+    
+    public void checkIfShouldBuyHouses() {
+        List<Site> sites = this.getSitesWhichCanBeBuiltOn();
+        for (Site s : sites) {
+            if (this.getMoney() - s.getHouseCost() > houseBuyingLowerLimit) {
+                s.addHouse();
+            }
+        }
+    }
+    
+    public void checkIfShouldMortgageProperties() {
+        List<Space> mortgagableSites = this.getMortgagableProperties();
+        
+        List<Site> nonMonopolySpaces = new ArrayList();
+        for (Space space : mortgagableSites) {
+            if (SiteGroup.playerOwnsAMonopoly(this.getNumber())) {
+                nonMonopolySpaces
+            }
+        }
+        
+        for (Site site : monopolySites) {
+            
+        }
+    }
+    
+}

@@ -1,0 +1,32 @@
+package Model;
+
+/**
+ *
+ * @author chris
+ */
+public class Utility extends Property {
+    
+    private final int singleUtilMultiplyer = 4;
+    private final int twoUtilMultiplyer = 10;
+    
+    public Utility(String name, int intialCost, int mortgageRate) {
+        super(name, intialCost, mortgageRate);
+        
+    }
+    
+    @Override
+    public int getRent(int diceRoll) {
+        if (owner != null) {
+            int utilsOwned = owner.getNumberOfUtilOwned();
+            switch(utilsOwned) {
+                case 1 : return singleUtilMultiplyer * diceRoll;
+                case 2 : return twoUtilMultiplyer * diceRoll;
+            }
+        }
+        return 0;
+    }
+    
+    
+
+    
+}

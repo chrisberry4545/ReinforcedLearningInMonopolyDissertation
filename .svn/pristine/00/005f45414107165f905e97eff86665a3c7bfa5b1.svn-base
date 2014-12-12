@@ -1,0 +1,63 @@
+package monopoly;
+
+import Controller.ActionManager;
+import Model.Players.*;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+
+/**
+ * Main method for running the game of Monopoly with Reinforced Learning AIs.
+ * @author Chris Berry
+ */
+public class Main {
+    
+    private static final String FILE_TO_LOAD = "June-01-2013-lambda0-1500runs";
+    private static final String FILE_NAME_TO_SAVE_TO = FILE_TO_LOAD;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        double lambda = 0.9;
+        int totalNumberOfRuns = 10000;
+        int runsBeforeSave = 100;
+        int amountOfSaves = totalNumberOfRuns/runsBeforeSave;
+        int numInputNodes  = SecondTDPlayer.NUM_INPUT_NODES;
+        int numOutputNodes = SecondTDPlayer.NUM_OUTPUT_NODES;
+        int numHiddenNodes = SecondTDPlayer.NUM_HIDDEN_NODES;
+        
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 0;
+        int numFullTDPlayers = 0;
+        int numSimpleTDAIs = 2;
+        
+//        /**
+//         * Enable to start new network.
+//         */
+        AbstractEvaluator evaluator = 
+                new AbstractEvaluator(lambda, numInputNodes, 
+                numHiddenNodes, numOutputNodes);
+        evaluator.restartNetwork();
+        
+        /**
+         * Enable to load network.
+         */
+     //   AbstractEvaluator evaluator = new AbstractEvaluator(FILE_TO_LOAD);
+       // evaluator.loadNet(FILE_TO_LOAD);
+        
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer, numOutputNodes);
+        ActionManager am = ActionManager.getInstance();
+        for (int runs = 0; runs < amountOfSaves; runs++ ) {
+            for (int i = 0; i < runsBeforeSave; i++) {
+                System.out.println("On run :" + i);   
+                //startNewGame vars: critic, showGraphics, numHumanPlayers, numRandomAIs, numTDAIs.
+                am.startNewGame(critic, false, numHumanPlayers, numRandomPlayers,
+                        numFullTDPlayers, numSimpleTDAIs);
+            }
+            //save after every hundred games.
+            System.out.println("Saving the file (Save number: " + runs + ").");
+            evaluator.saveNet(FILE_NAME_TO_SAVE_TO);
+        }
+    }
+}

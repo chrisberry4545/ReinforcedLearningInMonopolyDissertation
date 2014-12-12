@@ -1,0 +1,113 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package CardTests;
+
+import Model.Game;
+import Model.Board;
+import Model.Spaces.*;
+import Model.Players.Player;
+import Model.Players.RandomAI;
+import Model.Players.TestAI;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/**
+ *
+ * @author chris
+ */
+public class CardTestTemplate {
+    protected Player testPlayer;
+    
+    public CardTestTemplate() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+        
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+        System.out.println("* Setting up test: setUp() method");
+    }
+    
+    @After
+    public void tearDown() {
+        System.out.println("* Tearing down test: setUp() method");
+    }
+    // TODO add test methods here.
+    // The methods must be annotated with annotation @Test. For example:
+    //
+    // @Test
+    // public void hello() {}
+
+    public void setUpGameWithPlayer(int startingMoney, int numberOfOtherPlayers) {
+        testPlayer = new TestAI(0);
+        setUpOtherPlayers(startingMoney, numberOfOtherPlayers);
+    }
+    
+    private void setUpOtherPlayers(int startingMoney, int numberOfOtherPlayers) {
+        List<Player> players = new ArrayList();
+        players.add(testPlayer);
+        for (int i = 0; i < numberOfOtherPlayers; i++) {
+            Player otherPlayer = new TestAI(i+1);
+            otherPlayer.optionalMoneyChange(startingMoney);
+            players.add(otherPlayer);
+        }
+        testPlayer.optionalMoneyChange(startingMoney);
+        Game game = Game.newGame();
+        game.addPlayers(players);
+    }
+    
+    public void setUpGameWithRandomrOfPropertysAndHouses(int startingMoney,
+            int numberOfOtherPlayers) {
+        testPlayer = new RandomAI(0);
+        setUpOtherPlayers(startingMoney, numberOfOtherPlayers);
+        Board board = Game.getInstance().getBoard();
+        int numSites = board.getAllSites().size();
+        int numStations = board.getAllStations().size();
+        int numUtils = board.getAllUtilities().size();
+        int numSitesToAdd = (int)Math.round(Math.random() * (numSites - 1));
+        int numStationsToAdd = (int)Math.round(Math.random() * (numStations - 1));
+        int numUtilsToAdd = (int)Math.round(Math.random() * (numUtils - 1));
+        
+        //Add some random sites.
+        for (int i = 0; i < numSitesToAdd; i++) {
+            int numToPick = (int)Math.round(Math.random() * (numSites-1));
+            Space space = board.getAllSites().get(numToPick);
+            Site site = (Site)space;
+            site.setOwner(testPlayer);
+            int numHouses = (int)Math.round(Math.random() * Site.MAX_HOUSES);
+            for (int j = 0; j < numHouses; j++) {
+                site.addHouseForFree();
+            }
+        }
+        
+        //Add some random Stations.
+        for (int i = 0; i < numStationsToAdd; i++) {
+            int numToPick = (int)Math.round(Math.random() * (numStations-1));
+            Space space = board.getAllStations().get(numToPick);
+            space.setOwner(testPlayer);
+        }
+        
+        //Add some random utils
+        for (int i = 0; i < numUtilsToAdd; i++) {
+            int numToPick = (int)Math.round(Math.random() * (numUtils - 1));
+            Space space = board.getAllUtilities().get(numToPick);
+            space.setOwner(testPlayer);
+        }
+    }
+    
+}

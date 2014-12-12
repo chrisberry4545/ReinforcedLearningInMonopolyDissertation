@@ -1,0 +1,281 @@
+package Model.Spaces;
+
+import Model.Game;
+import Model.Players.Player;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Stores all of the site groups. I.e all orange properties or all green
+ * properties.
+ * @author Chris Berry
+ */
+public class SiteGroup {
+    
+    private static SiteGroup instance = null;
+    private static Map<Integer, List<Site>> siteGroups = new HashMap();
+    
+    /**
+     * Only one instance of this class exists.
+     */
+    protected SiteGroup() {
+    }
+
+/**
+ * Set up methods.
+ */    
+    /**
+    * Returns an instance of the singleton class PropertyGroup
+    * @return ActionManager instance
+    */
+    public static SiteGroup getInstance() {
+        if (instance == null) {
+            instance = new SiteGroup();
+        }
+        return instance;
+    }
+    
+    /**
+     * Adds a Site to the Site groups based upon its colour.
+     * @param site to add.
+     */
+    public static void addSite(Site site) {
+        int colorNum = site.getColorNumber();
+        if (siteGroups.containsKey(colorNum)) {
+            //Already exists
+            siteGroups.get(colorNum).add(site);
+        } else {
+            List sitesList = new ArrayList();
+            sitesList.add(site);
+            siteGroups.put(colorNum, sitesList);
+        }
+    }
+ 
+/**
+ * In Game methods.
+ */    
+    /**
+     * Checks if other properties have enough houses to add house to the one
+     * specified.
+     * @param site which you want to add a house to.
+     * @return whether or not it's possible to add a house.
+     */
+    public static boolean otherPropertiesHaveEnoughHouses(Site site) {
+        int colorNumber = site.getColorNumber();
+        //Go through all the sites of the color and check everyone of them
+        //doesn't have less houses than the one the player wants to add
+        //a house to.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : siteGroups.get(colorNumber)) {
+            if (oneSite.getHouses() < houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * If the other sites in the site group of the site argument have have more
+     * houses on them than the site in question, then you cannot sell a house
+     * on this site.
+     * @param site to check if it's possible to sell houses on.
+     * @return true if houses can be sold on the site.
+     */
+    public static boolean canSellHouseOnProperty(Site site) {
+        int colorNumber = site.getColorNumber();
+        //Go through all sites of the color and check every one of them doesn't
+        //have too few houses.
+        int houseNumbers = site.getHouses();
+        for (Site oneSite : siteGroups.get(colorNumber)) {
+            if (oneSite.getHouses() > houseNumbers) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Checks if a single player owns all the sites of a given color number.
+     * Returns true if they are or false if they are not.
+     * @param color of site group.
+     * @return true if player owns all sites in the group.
+     */
+    public static boolean playerOwnsAMonopoly(int colorNumber) {
+        if (colorNumber == -1) {
+            return false;
+        }
+        Player p = siteGroups.get(colorNumber).get(0).getOwner();
+        for(Site eachSite : siteGroups.get(colorNumber)) {
+            if (p == null || eachSite.getOwner() == null
+                    || !p.equals(eachSite.getOwner())) {
+                //False is returned if any of the site owners in the color
+                //are different or there is no owner.
+                return false;
+            }
+        }     
+        //Otherwise all the site owners must be the same.
+        return true; 
+    }
+    
+    /**
+     * Goes through each of the sites in a color group and returns false if any
+     * of them are owned. True is returned if all of them are unowned.
+     * @param colorNumber color number to find.
+     * @return true if none of the sites in the color group are owned.
+     */
+    public static boolean nobodyOwnsPropertys(int colorNumber) {
+        for (Site eachSite : siteGroups.get(colorNumber)) {
+            if (eachSite.getOwner() != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Goes through each site in the color group and returns true if one person
+     * owns one or more of the sites but there are some which are unowned.
+     * @param colorNumber to look for.
+     * @return true if one person owns one or more site but there are some unowned.
+     */
+    public static boolean ownedByOnePersonOthersAvaliable(int colorNumber) {
+        if (!playerOwnsAMonopoly(colorNumber)
+                && countNumberOfPlayersOwningProperties(colorNumber) == 1) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Returns true if the properties are owned by more than one player but
+     * there are properties avaliable.
+     * @param colorNumber
+     * @return true if properties are avaliable and the current properties
+     * are owned by more than one player.
+     */
+    public static boolean ownedByMoreThanOneOthersAvaliable(int colorNumber) {
+        if (countNumberOfPlayersOwningProperties(colorNumber) > 1
+                && propertiesAvaliable(colorNumber)) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Returns true if there are no other properties unowned in a property group
+     * but the properties are owned by at least 2 different players.
+     * @param colorNumber
+     * @return 
+     */
+    public static boolean ownedByMoreThanOneNoOthersAvaliable(int colorNumber) {
+        if (countNumberOfPlayersOwningProperties(colorNumber) > 1
+                && !propertiesAvaliable(colorNumber)) {
+            return true;
+        } 
+        return false;
+    }
+    
+    /**
+     * Returns true if at least one site hasn't been bought.
+     * @param colorNumber to look at sites for.
+     * @return true if at least one site hasn't been bought.
+     */
+    public static boolean propertiesAvaliable(int colorNumber) {
+        for (Site eachSite : siteGroups.get(colorNumber)) {
+            if (eachSite.getOwner() == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    
+    /**
+     * Returns the number of different players owning properties in a color group.
+     * @param colorNumber
+     * @return number of different players owning properties in a color group.
+     */
+    public static int countNumberOfPlayersOwningProperties(int colorNumber) {
+        Set<Player> playersWithColor = new HashSet();
+        for (Site eachSite : siteGroups.get(colorNumber)) {
+            if (eachSite.getOwner() != null) {
+                playersWithColor.add(eachSite.getOwner());
+            }
+        }
+        return playersWithColor.size();
+    }
+    
+    /**
+     * Returns true if a player is one property off completing a Monopoly on
+     * this color group.
+     * @param colorNumber
+     * @return true if player is one property off completeting a Monopoly.
+     */
+    public static boolean playerIsOneOffMonopoly(int colorNumber, Player player) {
+        int siteCount = 0;
+        //Returns false if the site doesn't have a color.
+        if (colorNumber == -1) {
+            return false;
+        }
+        for (Site eachSite : siteGroups.get(colorNumber)) {
+            if (eachSite.getOwner() != null 
+                    && eachSite.getOwner().equals(player)) {
+                siteCount++;
+            }
+        }
+        if (siteCount == siteGroups.get(colorNumber).size() - 1) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Returns true if any player is one off obtaining a Monopoly on the
+     * given color number.
+     * @param colorNumber to check player progress on.
+     * @return true if any player is one off obtaining a Monopoly on given
+     * color number, otherwise false.
+     */
+    public static boolean anyPlayerIsOneOffMonopoly(int colorNumber) {
+        for (Player p : Game.getInstance().getPlayers()) {
+            if (playerIsOneOffMonopoly(colorNumber, p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Gets a List of sites with the given color number.
+     * @param colorNumber to get sites for.
+     * @return List of Sites with the color number.
+     */
+    public static List<Site> getSitesInColor(int colorNumber) {
+        return siteGroups.get(colorNumber);
+    }
+    
+    /**
+     * Goes through all sites in a color group and returns all Sites the given
+     * player does not own.
+     * @param colorNumber color number of the sites.
+     * @param player to check ownership for.
+     * @return List of sites player doesn't own in the color group.
+     */
+    public static List<Site> getSitesPlayerDoesNotOwnInAColor(int colorNumber,
+            Player player) {
+        
+        List<Site> sitesPlayerDoesNotOwn = new ArrayList(siteGroups.get(colorNumber));
+        for (Site site : siteGroups.get(colorNumber)) {
+            if (site.getOwner() != null && site.getOwner().equals(player)) {
+                sitesPlayerDoesNotOwn.remove(site);
+            }
+        }
+        
+        return sitesPlayerDoesNotOwn;
+    }
+    
+}

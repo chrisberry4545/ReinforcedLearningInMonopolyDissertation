@@ -1,0 +1,122 @@
+package GameMechanicsTesting;
+
+import GeneralTestMethods.GeneralTestMethods;
+import Model.*;
+import Model.Players.TestAI;
+import Model.Spaces.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+/**
+ * Tests whether the auctions in the game work correctly.
+ * @author Chris Berry
+ */
+public class AuctionTest extends GeneralTestMethods {
+    
+    public AuctionTest() {
+    }
+    
+    @BeforeClass
+    public static void setUpClass() {
+    }
+    
+    @AfterClass
+    public static void tearDownClass() {
+    }
+    
+    @Before
+    public void setUp() {
+    }
+    
+    @After
+    public void tearDown() {
+    }
+    
+    /**
+     * Tests the mechanics for a house auction, hotel auction and property
+     * auction and check the player is charged the correct amount when they 
+     * win.
+     */
+    @Test
+    public void auctionTest() {
+        for (int numPlayers = 1; numPlayers < Game.MAX_PLAYERS; numPlayers++) {
+            //House auction test
+            houseAuctionTest(numPlayers, 100, 150, true);
+            //Hotel auction test
+            houseAuctionTest(numPlayers, 100, 150, false);            
+            //Property auction tests
+            propertyAuctionTest(numPlayers, 100, 150);
+        }
+        
+    }
+    
+    /**
+     * Test that house auctions happen as intended.
+     * @param numOtherPlayers number of other players to incldue.
+     * @param bidAmount bid amount the player should bid.
+     * @param startingMoney starting money for the player.
+     * @param houseAuction true if its a house auction, false if its a hotel
+     * auction.
+     */
+    private void houseAuctionTest(int numOtherPlayers, int bidAmount,
+            int startingMoney, boolean houseAuction) {
+        System.out.println("Starting house auction test");
+        super.setUpGameWithRandomPropertysAndHouses(startingMoney,
+                numOtherPlayers);
+        TestAI player = (TestAI) testPlayer;
+        int playersMoney = player.getMoney();
+        int expectedMoney = playersMoney - bidAmount;
+        player.setBidAmount(bidAmount);
+        Game.getInstance().startAuction(1, houseAuction);
+        if (player.getMoney() == expectedMoney) {
+            System.out.println("Test Successful: Player has paid the"
+                    + " house bid amount "
+                    + "of " + bidAmount);
+        }
+    }
+    
+    /**
+     * Tests that property auctions happen as intended.
+     * @param numOtherPlayers number of other players to incldue.
+     * @param bidAmount bid amount the player should bid.
+     * @param startingMoney starting money for the player.
+     */
+    private void propertyAuctionTest(int numOtherPlayers, int bidAmount,
+            int startingMoney) {
+        for (int i = 0; i < 50; i++) {
+            super.setUpGameWithRandomPropertysAndHouses(startingMoney, numOtherPlayers);
+            Site property = Game.getInstance().getBoard().getAllSites().get(0);
+            if (Game.getInstance().getCurrentPlayer().equals(testPlayer)) {
+                Game.getInstance().nextPlayer();
+            }
+            property.setOwner(null);
+            TestAI player = (TestAI) testPlayer;
+            int playersMoney = player.getMoney();
+            int expectedMoney = playersMoney - bidAmount;
+            player.setBidAmount(bidAmount);
+            Game.getInstance().startAuction(property, false);
+            if (player.getMoney() == expectedMoney) {
+                System.out.println("Test Successful: Player has paid the "
+                        + "property bid amount "
+                        + "of " + bidAmount);
+            } else {
+                fail("Player hasn't lost the correct amount of money. They were"
+                        + " supposed to loose " + bidAmount + " resulting in a "
+                        + "them having " + expectedMoney + " overall, however they"
+                        + " still have " + player.getMoney());
+            }
+            if (player.getSites().contains(property)) {
+                int totalPlayers = numOtherPlayers + 1;
+                System.out.println("Test Successful: Player now owns the property"
+                        + " (" + totalPlayers + " players)");
+            } else {
+                fail("Player doesn't own the property he bid on");
+            }
+            
+        }
+    }
+}

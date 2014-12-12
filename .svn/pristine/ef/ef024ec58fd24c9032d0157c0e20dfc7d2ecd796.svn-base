@@ -1,0 +1,522 @@
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Bank;
+import Model.Game;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import Model.Spaces.Space;
+import Model.Spaces.Station;
+import Model.Spaces.Utility;
+import java.util.*;
+import javax.swing.JOptionPane;
+import Model.DealOffer;
+
+/**
+ * Represents a Player in monopoly.
+ * @author chris
+ */
+public abstract class Player {
+    
+    private Space currentSpace;
+    private List<Space> properties;
+    private int money;
+    private int getOutOfJailCards;
+    private Collection<SiteGroup> propertyGroups;
+    private int turnsInJailCounter;
+    protected int token;
+    private boolean inJail;
+    
+    public static final int MAX_TURNS_IN_JAIL = 3;
+    
+    public static final int PAY_TO_LEAVE = 0;
+    public static final int ROLL_TO_LEAVE = 1;
+    public static final int GET_OUT_OF_JAIL_CARD = 2;
+    public static final int JAIL_BUY_HOUSES = 3;
+    
+    public static final int ROLL_DICE = 0;
+    public static final int BUY_HOUSES = 1;
+    public static final int OFFER_PROPERTY = 2;
+    public static final int MORTGAGE_PROPERTIES = 3;
+    public static final int SELL_HOUSES = 4;
+    public static final int BUY_BACK_MORTGAGED_PROPERTIES = 5;
+    public static final int SHOW_PROPERTIES = 6;
+    
+    public static final int NOT_ENOUGH_MONEY = 9;
+    
+    public static final int LEAVE_BIDDING_PROCESS = -1;
+    
+    
+    
+    public Player(int setToken) {
+        this.token = setToken;
+        properties = new ArrayList();
+        this.inJail = false;
+    }
+    
+    /**
+     * Rolls two dice and returns their outcome. If a double is rolled the
+     * dice can be rolled again. If 3 doubles are rolled a value of -1 is
+     * returned and the player should be sent to jail.
+     * @return value of player's dice rolls or -1 if they rolled 3 doubles.
+     */
+    public int rollForTurn() {
+        int dice1;
+        int dice2;
+        int total = 0;
+        for (int i = 0; i < 3; i++) {
+            dice1 = rollDice();
+            dice2 = rollDice();
+            total += dice1 + dice2;
+            //If dice aren't the same (E.g no double is rolled).
+            if (dice1 != dice2) {
+                return total;
+            }
+        }
+        //If no total is returned then the player has rolled 3 doubles
+        //and should be sent to jail. This is notified with a return of -1.
+        return -1;
+    }
+    
+    /**
+     * Rolls a single 6 sided dice and returns the result.
+     * @return the result of rolling a 6 sided dice.
+     */
+    public int rollDice() {
+        return 1 + (int)(Math.random() * ((6 - 1) + 1));
+    }
+    
+    public void setSpace(Space newSpace) {
+        this.currentSpace = newSpace;
+    }
+    
+    /**
+     * Changes a players money by a given amount.
+     * Returns false if the player can't afford this.
+     * @param amount
+     * @return 
+     */
+    private boolean changeMoney(int amount) {
+        int newAmount = money + amount;
+        if (newAmount >= 0) {
+            this.money = newAmount;
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Used when the user has an optional money change, such as buying a
+     * property. Returns true if successful.
+     * @param amount 
+     * @return true if the user can afford the change.
+     */
+    public boolean optionalMoneyChange(int amount) {
+        return changeMoney(amount);
+    }
+    
+    /**
+     * Used when the user is forced to pay money, such as paying rent.
+     * Handles bankruptcy and mortgaging.
+     * Returns true if successful.
+     * @param amount 
+     * @param owed the player the money is owed to.
+     * @return true if the user can afford the change.
+     */
+    public boolean forcedMoneyChange(int amount, Player owed) {
+        boolean enoughMoney = changeMoney(amount);
+        if (enoughMoney) {
+            return true;
+        } else {
+            //Allows users to try and sell houses
+            if (getPropertiesWithHouses().size() > 0) {
+                sellHouses();
+                //They can keep trying this until all houses are sold.
+                if (forcedMoneyChange(amount, owed)) {
+                    return true;
+                }
+            }
+            //Let user mortgage properties but only if there
+            //are enough properties to mortgage.
+            if (getMortgagableProperties().size() > 0) {
+                mortgageProperties();
+                //If this sorts it the player can continue.
+                if (forcedMoneyChange(amount, owed)) {
+                    return true;
+                }
+            }
+        }
+        //If they still can't pay they are declared bankrupt.
+        Game.getInstance().declareBankruptcy(this, owed);
+        return false;
+    }
+    
+    /**
+     * Gives all of a player's properties and get out of jail cards to another
+     * player.
+     * @param playerOwed player to give assets to.
+     */
+    public void giveAllAssetsToAnotherPlayer(Player playerOwed) {
+        //Attempt to give player all your propertys.
+        List<Space> properties = new ArrayList(this.getProperties());
+        playerOwed.receiveProperty(properties);
+        //Give the player all your get out of jail free cards.
+        while(getOutOfJailCards > 0) {
+                this.removeGetOutOfJailCard();
+                playerOwed.addGetOutOfJailCard();
+        }     
+    }
+    
+    public int getMoney () {
+        return money;
+    }
+    
+    public int getNumberOfUtilOwned() {
+        return getNumberOfCardTypeOwned(Utility.class);
+    }
+    
+    public int getNumberOfStationsOwned() {
+        return getNumberOfCardTypeOwned(Station.class);
+    }
+    
+    public int getNumberOfCardTypeOwned(Class cardType) {
+        int cardTypes = 0;
+        for (Space property : properties) {
+            if (property.getClass().equals(cardType)) {
+                cardTypes++;
+            }
+        }
+        return cardTypes;
+    }
+    
+    public int getToken() {
+        return token;
+    }
+    
+    public Space getCurrentSpace() {
+        return currentSpace;
+    }
+    
+    public List<Space> getProperties() {
+        return properties;
+    }
+    
+    public List<Site> getSites() {
+        List<Site> sites = new ArrayList();
+        for (Space property : properties) {
+            if (property.getClass().equals(Site.class)) {
+                sites.add((Site)property);
+            }
+        }
+        return sites;
+    }
+    
+    /**
+     * Gets the sites the player owns a Monopoly on.
+     * @return 
+     */
+    public List<Site> getMonopolySites() {
+        List<Site> monopolySites = new ArrayList();
+        for(Site site : getSites()) {
+            if (SiteGroup.playerOwnsAMonopoly(site.getColor())) {
+                monopolySites.add(site);
+            }
+        }
+        return monopolySites;
+    }
+    
+    /**
+     * Gets a list of sites which the player can build on.
+     * @return List of sites which can be built on.
+     */
+    public List<Space> getSitesWhichCanBeBuiltOn() {
+        List<Space> sites = new ArrayList();
+        for (Space property : properties) {
+            if (property.getClass().equals(Site.class)) {
+                Site site = (Site)property;
+                if (site.canBuildOnThisSite()) {
+                    sites.add((Site)property);
+                }
+            }
+        }
+        return sites;
+    }
+    
+    /**
+     * Gets the properties currently mortgaged.
+     * @return List of the currently mortgaged properties.
+     */
+    public List<Space> getMortgagedProperties() {
+        List<Space> mortgagedProperties = new ArrayList();
+        for (Space property : getProperties()) {
+            if (property.isMortgaged()) {
+                mortgagedProperties.add(property);
+            }   
+        }
+        return mortgagedProperties;
+    }
+    
+    /**
+     * Returns a List of properties not already mortgaged.
+     * @return 
+     */
+    public List<Space> getMortgagableProperties() {
+        List<Space> propertiesToMortgage = new ArrayList();
+        for (Space property : properties) {
+            if (!property.isMortgaged()) {
+                propertiesToMortgage.add(property);
+            }
+        }
+        return propertiesToMortgage;
+    }
+    
+    /**
+     * Returns a list of properties with houses on them.
+     * @return list of properties with houses in them.
+     */
+    public List<Space> getPropertiesWithHouses() {
+        List<Space> propertiesWithHouses = new ArrayList();
+        for (Site site : this.getSites()) {
+            //Propertys will be sites in this case.
+            if (site.getHouses() > 0) {
+                propertiesWithHouses.add(site);
+            }
+        }
+        return propertiesWithHouses;
+    }
+    
+    public void addProperty(Space p) {
+        properties.add(p);
+    }
+    
+    public void removeProperty(Space p) {
+        properties.remove(p);
+    }
+    
+    /**
+     * Adds one get out of jail card to the player.
+     */
+    public void addGetOutOfJailCard() {
+        getOutOfJailCards++;
+    }
+    
+    /**
+     * Removes a get out of jail card from the player.
+     */
+    public void removeGetOutOfJailCard() {
+        getOutOfJailCards--;
+    }
+    
+    /**
+     * Gets the number of GOJCs owned by the player.
+     * @return number of GOJCs.
+     */
+    public int getNumberOfGetOutOfJailCards() {
+        return getOutOfJailCards;
+    }
+    
+    /**
+     * Sets the user in or out of jail.
+     * @param goToJail 
+     */
+    public void setInJail(boolean goToJail) {
+        this.inJail = goToJail;
+    }
+    
+    /**
+     * Returns if the user is in jail or not.
+     * @return true if the user is in jail.
+     */
+    public boolean inJail() {
+        return inJail;
+    }
+    
+    /**
+     * Ask player yes/no question
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    public abstract boolean askPlayerYesNoQuestion(String message, String title);
+    
+    /**
+     * Messages the player with some information.
+     * @param message to give player
+     * @param title of message
+     */
+    public abstract void messagePlayer (String message, String title);
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    public abstract int askPlayerInJailOptions();
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    public abstract int askPlayerMoveOptions();
+        
+    /**
+     * Allows user to select from a list of Sites and returns the site 
+     * selected.
+     * @return the Site selected by the user.
+     */
+    public abstract Site chooseProperty();
+    
+    /**
+     * Allows the user to select a property to build houses on.
+     * @return the Site selected by the user.
+     */
+    public abstract Site choosePropertyForBuildingOn();
+    
+    /**
+     * Allows user choice of properties to mortgage to avoid bankruptcy.
+     */
+    public abstract void mortgageProperties();
+    
+    /**
+     * Allows user to sell houses on their property.
+     */
+    public abstract void sellHouses();
+    
+    /**
+     * Shows the player's currently owned properties.
+     */
+    public abstract void showPlayerProperties();
+    
+    /**
+     * Offers a property to another player.
+     */
+    public abstract void makeAnOfferToAnotherPlayer();
+    
+    /**
+     * Allows player to choose whether to accept or deny an offer.
+     * @param offer Deal offered by player
+     * @param playerOffering player making the offer.
+     */
+    public abstract void assessAnOffer(DealOffer offer, Player playerOffering);
+    
+    /**
+     * Allows the player to buy back property they have mortgaged.
+     */
+    public abstract void buyBackMortgagedProperty();
+    
+    /**
+     * Allows player to make a bid on a property.
+     * @param property to bid on.
+     * @param minimumBid the minimum bid amount.
+     * @return players bid amount.
+     */
+    public abstract int makeABid(Space property, int minimumBid);
+    
+    public abstract int makeABidOnHouse(int minBid, boolean isHouse);
+    
+    public abstract void receiveProperty(List<Space> properties);
+    
+    /**
+     * Lets the player by the property if they have enough money.
+     * @param property to buy
+     * @return true if the player has enough money to successfully buy the property.
+     */
+    public boolean buyProperty(Space property) {
+        int cost = property.getIntialCost();
+        if (this.getMoney() >= cost) {
+            this.forcedMoneyChange(-cost, Bank.getInstance());
+            property.setOwner(this);
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    /**
+     * The player will try and leave jail.
+     * @return true if the player can afford to.
+     */
+    public boolean payToLeaveJail() {
+        if (changeMoney(-Game.leaveJailCost)) {
+            setInJail(false);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Attempt to roll a double to leave jail.
+     * @return value rolled if a double is successfully rolled, or -1
+     * otherwise.
+     */
+    public int rollToLeaveJail() {
+        int dice1 = rollDice();
+        int dice2 = rollDice();
+        if (dice1 == dice2) {
+            setInJail(false);
+            return dice1 + dice2;
+        }
+        return -1;
+    }
+    
+    /**
+     * Attempt to use a get out of jail card to leave jail.
+     * @return true if card used successfully, false if the user doesn't have
+     * a card.
+     */
+    public boolean useGetOutOfJailCard() {
+        if (getOutOfJailCards > 0) {
+            removeGetOutOfJailCard();
+            setInJail(false);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Increases the jail counter for every turn the player is in jail.
+     * If this exceeds the maximum number of turns in jail, the player is 
+     * released from jail.
+     */
+    public void increaseJailCounter() {
+        if (turnsInJailCounter > MAX_TURNS_IN_JAIL) {
+            turnsInJailCounter = 0;
+            //Player gets charged 50 anyway.
+            this.forcedMoneyChange(-Game.leaveJailCost, Bank.getInstance());
+            setInJail(false);
+        } else {
+            turnsInJailCounter++;
+        }
+    }
+    
+    /**
+     * Handles the transactions involved in a deal between two players.
+     * @param spaceOffered
+     * @param playerOffering
+     * @param priceOffered 
+     */
+    public void acceptDealFromPlayer(DealOffer deal, Player playerOffering) {
+        //Handle money.
+        int amountOffered = deal.getOfferedCash();
+        int amountRequested = deal.getRequestedCash();
+        int amountToPlayerOffering = amountRequested - amountOffered;
+        playerOffering.forcedMoneyChange(amountToPlayerOffering, this);
+        this.forcedMoneyChange(-amountToPlayerOffering, playerOffering);
+        //Handle get out of jail cards.
+        for (int i = 0; i < deal.getOfferedGetOutOfJailCards(); i++) {
+            playerOffering.removeGetOutOfJailCard();
+            this.addGetOutOfJailCard();
+        }
+        for (int i = 0; i < deal.getRequestedGetOutOfJailCards(); i++) {
+            this.removeGetOutOfJailCard();
+            playerOffering.addGetOutOfJailCard();
+        }
+        //Handle property.
+        for (Space property : deal.getOfferedProperties()) {
+            property.setOwner(this);
+        }
+        for (Space property : deal.getRequestedProperties()) {
+            property.setOwner(playerOffering);
+        }
+    }
+    
+}

@@ -1,0 +1,96 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ *
+ * @author Chris
+ */
+public class GameStats {
+    
+    private static Map<Integer, Integer> numberOfDealsOffered = new HashMap();
+    private static Map<Integer, Integer> numberOfDealsAccepted = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesBought = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesMortgaged = new HashMap();
+    private static Map<Integer, Integer> numberOfPropertiesUnMortgaged = new HashMap();
+    private static Map<Integer, Integer> numberOfHousesBought = new HashMap();
+    private static Map<Integer, Integer> numberOfHousesSold = new HashMap();
+    private static int numPlayers;
+    
+    public GameStats() {
+       
+    }
+    
+    public static void setUpGameStats(int numberOfPlayers) {
+        numPlayers = numberOfPlayers;
+        for (int i = 0; i < numberOfPlayers; i++) {
+            numberOfDealsOffered.put(i,0);
+            numberOfDealsAccepted.put(i,0);
+            numberOfPropertiesBought.put(i,0);
+            numberOfPropertiesMortgaged.put(i,0);
+            numberOfPropertiesUnMortgaged.put(i,0);
+            numberOfHousesBought.put(i,0);
+            numberOfHousesSold.put(i,0);
+        }
+    }
+    
+    private static void addToMap(int playerNumber, Map<Integer, Integer> map) {
+        int oldValue = map.get(playerNumber);
+        int newValue = oldValue + 1;
+        map.put(playerNumber, newValue);
+    }
+    
+    public static void addDealOffered(int playerNumber) {
+        addToMap(playerNumber, numberOfDealsOffered);
+    }
+    
+    public static void addDealAccepted(int playerNumber) {
+        addToMap(playerNumber, numberOfDealsAccepted);
+    }
+    
+    public static void addPropertyBought(int playerNumber) {
+        addToMap(playerNumber, numberOfPropertiesBought);
+    }
+    
+    public static void addPropertyMortgaged(int playerNumber) {
+        addToMap(playerNumber, numberOfPropertiesMortgaged);
+    }
+    
+    public static void addPropertyUnMortgaged(int playerNumber) {
+        addToMap(playerNumber, numberOfPropertiesUnMortgaged);
+    }
+    
+    public static void addNumberOfHousesBought(int playerNumber) {
+        addToMap(playerNumber, numberOfHousesBought);
+    }
+    
+    public static void addNumberOfHousesSold(int playerNumber) {
+        addToMap(playerNumber, numberOfHousesSold);
+    }
+    
+    public static void printStats() {
+        for (int i = 0; i < numPlayers; i++) {
+            System.out.println("Stats for player " + i + ":");
+            System.out.println("Number of deals offered: " 
+                    + numberOfDealsOffered.get(i));
+            System.out.println("Number of deals accepted: " 
+                    + numberOfDealsAccepted.get(i));
+            System.out.println("Number of properties bought: " 
+                    + numberOfPropertiesBought.get(i));
+            System.out.println("Number of properties mortgaged: " 
+                    + numberOfPropertiesMortgaged.get(i));
+            System.out.println("Number of properties unmortgaged: " 
+                    + numberOfPropertiesUnMortgaged.get(i));
+            System.out.println("Number of houses bought: " 
+                    + numberOfHousesBought.get(i));
+            System.out.println("Number of houses sold: " 
+                    + numberOfHousesSold.get(i));
+        }
+    }
+     
+}

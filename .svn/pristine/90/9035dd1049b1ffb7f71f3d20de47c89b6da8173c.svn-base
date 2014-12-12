@@ -1,0 +1,173 @@
+package Model.Players;
+
+import Model.Board;
+import Model.DealOffer;
+import Model.Game;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import java.util.List;
+import java.util.EmptyStackException;
+
+/**
+ *
+ * @author chris
+ */
+public class AIControllerV1 extends AI{
+    
+    private AbstractTDPlayer tdPlayer;
+    private SmartBot bot;
+    
+    private final int roundsBeforeSwap = 65;
+    
+    public AIControllerV1(int tokenNumber, Critic critic, 
+            TDInputGenerator inputGen, Board board) {
+        super(tokenNumber);
+        boolean useRandomMoves = false;
+        critic.setBlockLearning(true);
+        this.bot = new SmartBot(tokenNumber, this);
+        this.tdPlayer = new AbstractTDPlayer(tokenNumber, board, critic, inputGen,
+               useRandomMoves, this);
+    }
+    
+    private boolean swapConditionMet() {
+        checkPlayersAreStillEmpty();
+        if (Game.getInstance().getRoundCount() > roundsBeforeSwap) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    private void checkPlayersAreStillEmpty() {
+        if (!tdPlayer.getProperties().isEmpty()) {
+            System.err.println("TD player has properties");
+            throw new EmptyStackException();
+        }
+        if (tdPlayer.getMoney() != 0) {
+            System.err.println("TD player has " + tdPlayer.getMoney() + " money");
+            throw new EmptyStackException();
+        }
+        if (!bot.getProperties().isEmpty()) {
+            System.err.println("bot player has properties");
+            throw new EmptyStackException();
+        }
+        if (bot.getMoney() != 0) {
+            System.err.println("bot player has " + tdPlayer.getMoney() + " money");
+            throw new EmptyStackException();
+        }
+        
+    }
+
+    @Override
+    public boolean askPlayerIfTheyWantToBuyProperty(Space property) {
+        if (swapConditionMet()) {
+            return bot.askPlayerIfTheyWantToBuyProperty(property);
+        } else {
+            return tdPlayer.askPlayerIfTheyWantToBuyProperty(property);
+        }
+    }
+
+    @Override
+    public int askPlayerInJailOptions() {
+        if (swapConditionMet()) {
+            return bot.askPlayerInJailOptions();
+        } else {
+            return tdPlayer.askPlayerInJailOptions();
+        }
+    }
+
+    @Override
+    public boolean askPlayerMoveOptions() {
+        if (swapConditionMet()) {
+            return bot.askPlayerMoveOptions();
+        } else {
+            return tdPlayer.askPlayerMoveOptions();
+        }
+        
+    }
+
+    @Override
+    public boolean assessAnOffer(DealOffer offer, Player playerOffering) {
+        if (swapConditionMet()) {
+            return bot.assessAnOffer(offer, playerOffering);
+        } else {
+            return tdPlayer.assessAnOffer(offer, playerOffering);
+        }
+    }
+
+    @Override
+    public int makeABid(Space property, int minimumBid, List<Player> playersInTheRunning) {
+        if (swapConditionMet()) {
+            return bot.makeABid(property, minimumBid, playersInTheRunning);
+        } else {
+            return tdPlayer.makeABid(property, minimumBid, playersInTheRunning);
+        }
+    }
+
+    @Override
+    public int makeABidOnHouse(int minBid, boolean isHouse, List<Player> playersInTheRunning) {
+        if (swapConditionMet()) {
+            return bot.makeABidOnHouse(minBid, isHouse, playersInTheRunning);
+        } else {
+            return tdPlayer.makeABidOnHouse(minBid, isHouse, playersInTheRunning);
+        }
+    }
+
+    @Override
+    public void receiveProperty(List<Space> properties) {
+        if (swapConditionMet()) {
+            bot.receiveProperty(properties);
+        } else {
+            tdPlayer.receiveProperty(properties);
+        }
+    }
+
+    @Override
+    public void hasWon() {
+        if (swapConditionMet()) {
+            bot.hasWon();
+        } else {
+            tdPlayer.hasWon();
+        }
+    }
+
+    @Override
+    public void hasLost() {
+        if (swapConditionMet()) {
+            bot.hasLost();
+        } else {
+            tdPlayer.hasLost();
+        }
+    }
+
+    @Override
+    public Site choosePropertyForBuildingOn() {
+        if (swapConditionMet()) {
+            return bot.choosePropertyForBuildingOn();
+        } else {
+            return tdPlayer.choosePropertyForBuildingOn();
+        }
+    }
+
+    @Override
+    public void mortgageProperties() {
+        if (swapConditionMet()) {
+            bot.mortgageProperties();
+        } else {
+            tdPlayer.mortgageProperties();
+        }
+    }
+
+    @Override
+    public void sellHouses() {
+        if (swapConditionMet()) {
+            bot.sellHouses();
+        } else {
+            tdPlayer.sellHouses();
+        }
+    }
+    
+    
+    
+}

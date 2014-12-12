@@ -1,0 +1,817 @@
+package monopoly;
+
+import Model.Bank;
+import Model.Board;
+import Model.DealOffer;
+import Model.Game;
+import Model.Players.TDPlayer;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+import Model.Players.Player;
+import Model.Players.TDInputGenerators.TDInputGenerator;
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import Model.Spaces.SpaceEnums;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A series of questions to ask the AI about what they would do in a number
+ * of situations.
+ * @author Chris Berry
+ */
+public class MonopolyQueries {
+    
+    public static final int p1Number = 0;
+    public static final int p2Number = 1;
+    public static final int p3Number = 2;
+    public static final int p4Number = 3;
+    
+    private static int correctDecisions = 0;
+    
+    
+    /**
+     * Runs all the query tests for the given variables.
+     * @param playersFile the player file to load.
+     * @param inputGen the input gen the player is using.
+     * @param roundCount the rounds to start some of the query tests from.
+     */
+    public static void runAllQueryTests(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+            MonopolyQueries.MonopolyQueryOne(playersFile, inputGen, roundCount);
+            MonopolyQueries.MonopolyQueryOneV2(playersFile, inputGen, roundCount);
+            MonopolyQueries.MonopolyQueryTwo(playersFile,inputGen, roundCount);
+            MonopolyQueries.MonopolyQueryTwoV2(playersFile,inputGen, roundCount);
+            MonopolyQueries.MonopolyQueryThree(playersFile, inputGen, roundCount);
+            MonopolyQueries.MonopolyQueryThreeV2(playersFile, inputGen, roundCount);
+            System.out.println("For round count: " + roundCount);
+            System.out.println("Correct Decisions: " + MonopolyQueries.getCorrectDecisions() + " out of 6");
+            MonopolyQueries.ifYouCouldOwnAnyMonopoly(playersFile,inputGen, roundCount);
+            MonopolyQueries.ifYouCouldOwnAnyMonopolyAllWithHotels(playersFile, inputGen, roundCount);
+            MonopolyQueries.ifYouCouldOwnAnySpace(playersFile, inputGen, roundCount);
+            MonopolyQueries.howMuchMoneyWillPlayerAcceptForBowSt(playersFile, inputGen, roundCount);
+    }
+    
+    /**
+     * All Players own Monopolys except 2. Will those players trade to get Monopolys themselves, or will they hold onto their properties.
+     *  P1 owns all the pink properties, each with a hotel on them and $300.
+     *  P2 owns all the orange properties, each with a hotel on them and $300.
+     *  P3 owns all the Mayfair and Regent St. (1 green 1 blue), and $1500.
+     *  P4 owns all the Bond St, Oxford St and Park Lane (2 green 1 blue),and $1500.
+     *  P4 is asked if there is a deal worth making.
+     *  P4 is asked if they will accept a deal of Regents St for Park Lane, giving both players a Monopoly.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used.
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryOne(String playersFile, TDInputGenerator inputGen, 
+            int roundCount) {
+        Game game = setUpGameTypeOne(playersFile, 1, 4, inputGen, roundCount);
+        Player currentPlayer = game.getPlayers().get(p4Number);
+        Player otherNonMonopolyPlayer = game.getPlayers().get(p3Number);
+          
+        Board board = game.getBoard();
+        Space parkLane = board.get(SpaceEnums.PARK_LANE_NUMBER);
+        Space regentsSt = board.get(SpaceEnums.REGENT_ST_NUMBER);
+        //See if the player would accept a good offer from the other player.
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(regentsSt);
+        offer.addPropertyToRequest(parkLane);
+        
+        boolean shouldPlayerAcceptOffer = true;
+        
+        System.out.println("Player asked to trade their Park Lane for Regents Street");
+        
+        //Asks the player whats the best deal he could make at the moment.
+        printPlayersBestDeal(currentPlayer);
+        
+        printValueOfDeal(offer, currentPlayer, currentPlayer, otherNonMonopolyPlayer);
+        
+        printIfDealWouldBeAccepted(offer, currentPlayer, otherNonMonopolyPlayer,
+                shouldPlayerAcceptOffer);
+        System.out.println();
+    }
+    
+    /**
+     * All Players own Monopolys except 2. Will those players trade to get Monopolys themselves, or will they hold onto their properties.
+     *  P1 owns all the pink properties, each with a hotel on them and $300.
+     *  P2 owns all the orange properties, each with a hotel on them and $300.
+     *  P3 owns all the Mayfair and Regent St. (1 green 1 blue), and $1500.
+     *  P4 owns all the Bond St, Oxford St and Park Lane (2 green 1 blue),and $1500.
+     *  P3 is asked if there is a deal worth making.
+     *  P3 is asked if they will accept a deal of Regents St for Park Lane, giving both players a Monopoly.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used.
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryOneV2(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = setUpGameTypeOne(playersFile, 1, 4, inputGen, roundCount);
+        Player currentPlayer = game.getPlayers().get(p3Number);
+        Player otherNonMonopolyPlayer = game.getPlayers().get(p4Number);
+        
+        
+        Board board = game.getBoard();
+        Space parkLane = board.get(SpaceEnums.PARK_LANE_NUMBER);
+        Space regentsSt = board.get(SpaceEnums.REGENT_ST_NUMBER);
+        //See if the player would accept a good offer from the other player.
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(parkLane);
+        offer.addPropertyToRequest(regentsSt);
+        
+        boolean shouldPlayerAcceptOffer = true;
+        
+        System.out.println("Player asked to trade their Regent Street for Park Lane");
+        
+        //Asks the player whats the best deal he could make at the moment.
+        printPlayersBestDeal(currentPlayer);
+        
+        printValueOfDeal(offer, currentPlayer, currentPlayer, otherNonMonopolyPlayer);
+        
+        printIfDealWouldBeAccepted(offer, currentPlayer, otherNonMonopolyPlayer,
+                shouldPlayerAcceptOffer);
+        System.out.println();
+    }
+    
+    
+    /**
+     * No players are near to making a Monopoly except one player. That player is close to making a Monopoly on low value properties (Light blue). The player close to a Monopoly wants to trade another of his high value propertys (one which none of the other players own any matching colors of) for another light blue giving him a Monopoly. Will the other players accept this trade?
+     * P1 owns Bond St, Euston and Angel and $1000.
+     * P2 owns Bow St and Pentonville Rd. and $1000.
+     * P3 owns Piccadily and $1000.
+     * P4 owns Whitehall and $1000.
+     * P2 Asked if there is a deal worth making.
+     * P2 is asked is they will trade Pentonville Rd for Bond St with P1.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used. 
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryTwo(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = setUpGameTypeTwo(playersFile, 1, 4, inputGen, roundCount);
+        Board board = game.getBoard();
+        
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(board.get(SpaceEnums.BOND_ST_NUMBER));
+        offer.addPropertyToRequest(board.get(SpaceEnums.PENTONVILLE_NUMBER));
+        
+        boolean shouldPlayerAcceptOffer = false;
+        
+        System.out.println("Player asked to trade their Pentonville Road for Bond Street (thus giving other player a Monopoly)");
+        
+        Player playerOffering = game.getPlayers().get(p1Number);
+        Player playerReceiving = game.getPlayers().get(p2Number);
+        
+        printPlayersBestDeal(playerOffering);
+        printPlayersBestDeal(playerReceiving);
+        
+        printValueOfDeal(offer, playerReceiving, playerReceiving ,playerOffering);
+        printIfDealWouldBeAccepted(offer, playerReceiving, playerOffering,
+                shouldPlayerAcceptOffer);
+        
+        System.out.println();
+    }
+    
+    
+    /**
+     * No players are near to making a Monopoly except one player. That player is close to making a Monopoly on low value properties (Light blue). The player close to a Monopoly wants to trade another of his high value propertys (one which none of the other players own any matching colors of) for another light blue giving him a Monopoly. Will the other players accept this trade?
+     * P1 owns Bond St, Euston and Angel and $1000.
+     * P2 owns Bow St and Pentonville Rd. and $1000.
+     * P3 owns Piccadily and $1000.
+     * P4 owns Whitehall and $1000.
+     * P1 Asked if there is a deal worth making.
+     * P1 is asked is they will trade Pentonville Rd for Bond St with P2. 
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used. 
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryTwoV2(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = setUpGameTypeTwo(playersFile, 1, 4, inputGen, roundCount);
+        Board board = game.getBoard();
+        
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(board.get(SpaceEnums.PENTONVILLE_NUMBER));
+        offer.addPropertyToRequest(board.get(SpaceEnums.BOND_ST_NUMBER));
+        
+        boolean shouldPlayerAcceptOffer = true;
+        
+        System.out.println("Player asked to trade their Bond Street for Pentonville Road (thus gaining a Monopoly)");
+        
+        Player playerOffering = game.getPlayers().get(p2Number);
+        Player playerReceiving = game.getPlayers().get(p1Number);
+        
+        printPlayersBestDeal(playerOffering);
+        printPlayersBestDeal(playerReceiving);
+        
+        printValueOfDeal(offer, playerReceiving, playerReceiving ,playerOffering);
+        printIfDealWouldBeAccepted(offer, playerReceiving, playerOffering,
+                shouldPlayerAcceptOffer);
+        
+        System.out.println();
+    }
+    
+    /**
+     * Player 1 and 2 have Monopolys and very strong positons but not much money. Player 3 and 4 can trade to both gain Monopolys and both have enough money to start building houses. Will the two players trade and put themselves in with a chance even though doing so would involve player 3 trading a higher value property for a lower value one?
+     * P1 Owns all the pinks, all with hotels and $300.
+     * P2 owns all the oranges, all with hotels and $300.
+     * P3 owns two reds and a green and $1500.
+     * P4 owns a red and 2 greens and $1500.
+     * P3 asked if there is a deal worth making.
+     * P3 asked if they will trade a red for a green, giving both players a monopoly.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used.
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryThree(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = setUpGameTypeThree(playersFile, 1, 4, inputGen, roundCount);
+        Board board = game.getBoard();
+        
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(board.get(SpaceEnums.REGENT_ST_NUMBER));
+        offer.addPropertyToRequest(board.get(SpaceEnums.STRAND_NUMBER));
+        
+        boolean shouldPlayerAcceptOffer = true;
+        
+        System.out.println("Player asked to trade their Strand for Regents Street (thus gaining a Monopoly)");
+        
+        Player playerOffering = board.get(SpaceEnums.REGENT_ST_NUMBER).getOwner();
+        Player playerReceiving = board.get(SpaceEnums.STRAND_NUMBER).getOwner();
+        
+        printPlayersBestDeal(playerOffering);
+        printPlayersBestDeal(playerReceiving);
+        
+        printValueOfDeal(offer, playerReceiving, playerReceiving ,playerOffering);
+        printIfDealWouldBeAccepted(offer, playerReceiving, playerOffering,
+                shouldPlayerAcceptOffer);
+        
+        System.out.println();
+    }
+    
+    /**
+     * Player 1 and 2 have Monopolys and very strong positons but not much money. Player 3 and 4 can trade to both gain Monopolys and both have enough money to start building houses. Will the two players trade and put themselves in with a chance even though doing so would involve player 3 trading a higher value property for a lower value one?
+     * P1 Owns all the pinks, all with hotels and $300.
+     * P2 owns all the oranges, all with hotels and $300.
+     * P3 owns two reds and a green and $1500.
+     * P4 owns a red and 2 greens and $1500.
+     * P4 asked if there is a deal worth making.
+     * P4 asked if they will trade a green for a red, giving both players a Monopoly.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used.
+     * @param roundCount the round count to start game at.
+     */
+    public static void MonopolyQueryThreeV2(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = setUpGameTypeThree(playersFile, 1, 4, inputGen, roundCount);
+        Board board = game.getBoard();
+        
+        DealOffer offer = new DealOffer();
+        offer.addPropertyToOffer(board.get(SpaceEnums.STRAND_NUMBER));
+        offer.addPropertyToRequest(board.get(SpaceEnums.REGENT_ST_NUMBER));
+        
+        boolean shouldPlayerAcceptOffer = true;
+        
+        System.out.println("Player asked to trade their Regents Street for Strand (thus gaining a Monopoly)");
+        
+        Player playerOffering = board.get(SpaceEnums.STRAND_NUMBER).getOwner();
+        Player playerReceiving = board.get(SpaceEnums.REGENT_ST_NUMBER).getOwner();
+        
+        printPlayersBestDeal(playerOffering);
+        printPlayersBestDeal(playerReceiving);
+        
+        printValueOfDeal(offer, playerReceiving, playerReceiving ,playerOffering);
+        printIfDealWouldBeAccepted(offer, playerOffering, playerReceiving,
+                shouldPlayerAcceptOffer);
+        
+        System.out.println();
+    }
+    
+    /**
+     * Asks the player what Monopoly they would hold if they could have any
+     * at the start of the game.
+     * @param playersFile the players file to load.
+     * @param inputGen the input gen the player should used.
+     * @param roundCount the round count to start game at.
+     */
+    public static void ifYouCouldOwnAnyMonopoly(String playersFile,
+            TDInputGenerator inputGen, int roundCount) {
+        Game game = setUpBasicGame(playersFile, 1, 4, inputGen, roundCount);
+        //Give players money.
+        for (Player p : game.getPlayers()) {
+            p.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        }
+        //Ask the network which of the Monopolys it values highest.
+        List<Site> brownSites = new ArrayList();
+        List<Site> lightBlueSites = new ArrayList();
+        List<Site> pinkSites = new ArrayList();
+        List<Site> orangeSites = new ArrayList();
+        List<Site> redSites = new ArrayList();
+        List<Site> yellowSites = new ArrayList();
+        List<Site> greenSites = new ArrayList();
+        List<Site> blueSites = new ArrayList();
+        for (Site site : game.getBoard().getAllSites()) {
+            switch (site.getColorNumber()) {
+                case Board.BROWN :
+                    brownSites.add(site);
+                    break;
+                case Board.LIGHT_BLUE :
+                    lightBlueSites.add(site);
+                    break;
+                case Board.PINK :
+                    pinkSites.add(site);
+                    break;
+                case Board.ORANGE :
+                    orangeSites.add(site);
+                    break;
+                case Board.RED :
+                    redSites.add(site);
+                    break;
+                case Board.YELLOW : 
+                    yellowSites.add(site);
+                    break;
+                case Board.GREEN :
+                    greenSites.add(site);
+                    break;
+                case Board.BLUE :
+                    blueSites.add(site);
+                    break;
+            }
+        }
+        
+        TDPlayer player = (TDPlayer)game.getPlayers().get(0);
+        
+        Map<String, Double> siteValues = new HashMap();
+        siteValues.put("Brown Sites", getValueOfOwningSitesWithHouses(brownSites, player,0));
+        siteValues.put("Light Blue Sites", getValueOfOwningSitesWithHouses(lightBlueSites, player,0));
+        siteValues.put("Pink Sites", getValueOfOwningSitesWithHouses(pinkSites, player,0));
+        siteValues.put("Oranges Sites", getValueOfOwningSitesWithHouses(orangeSites, player,0));
+        siteValues.put("Reds Sites", getValueOfOwningSitesWithHouses(redSites, player,0));
+        siteValues.put("Yellows Sites", getValueOfOwningSitesWithHouses(yellowSites, player,0));
+        siteValues.put("Greens Sites", getValueOfOwningSitesWithHouses(greenSites, player,0));
+        siteValues.put("Blue Sites", getValueOfOwningSitesWithHouses(blueSites, player,0));
+        
+        double bestValue = 0;
+        String winningSites = "None";
+        for (Map.Entry<String, Double> entry : siteValues.entrySet()) {
+            double value = entry.getValue();
+            if (value > bestValue) {
+                bestValue = value;
+                winningSites = entry.getKey();
+            }
+        }
+        System.out.println("If the player could own any Monopoly..");
+        System.out.println("The sites the player wants most are: " + winningSites);
+        
+        
+    }
+    
+    /**
+     * Gets the value for the player of owning a List of sites all with a number
+     * of houses on them.
+     * @param sites List of sites for the player to be given
+     * @param player to be given sites.
+     * @param numHouses number of houses to be put on Sites.
+     * @return 
+     */
+    private static double getValueOfOwningSitesWithHouses(List<Site> sites, TDPlayer player,
+            int numHouses) {
+        TDPlayer p = (TDPlayer)player;
+        for (Site aSite : sites) {
+            aSite.setOwner(player);
+            for (int i = 0; i < numHouses; i++) {
+                aSite.addHouseForFree();
+            }
+        }
+        double results = player.getMoveEvaluator().getThisPlayersResults();
+        //Sets sites back.
+        for (Site aSite : sites) {
+            aSite.setOwner(null);
+            for (int i = 0; i < numHouses; i++) {
+                aSite.returnHousesForFree(1);
+            }
+        } 
+        return results;
+    }
+    
+    /**
+     * Prints the players choice if they could own any space.
+     * @param playersFile to load from.
+     * @param inputGen input gen for the player to use.
+     * @param roundCount the round count to start game at.
+     */
+    public static void ifYouCouldOwnAnySpace(String playersFile, TDInputGenerator inputGen,
+            int roundCount) {
+        Game game = MonopolyQueries.setUpBasicGame(playersFile, 1, 4, inputGen,
+                roundCount);
+        Board board = game.getBoard();
+        TDPlayer player = (TDPlayer) game.getPlayers().get(0);
+        
+        double bestResult = 0;
+        String bestSpace = "None";
+        for (Space space : board) {
+            double value 
+                    = player.getMoveEvaluator().getResultOfGettingPropertyFromPlayer(space, player);
+            if (value > bestResult) {
+                bestResult = value;
+                bestSpace = space.getName();
+            }
+        }
+        System.out.println("Space player values highest at turn " + roundCount + "..");
+        System.out.println(bestSpace);
+        
+    }
+    
+    /**
+     * Prints the players choice if they could own any Monopoly, with all
+     * the sites having hotels on them.
+     * @param playersFile to load from.
+     * @param inputGen input gen for the player to use.
+     * @param roundCount the round count to start game at.
+     */
+    public static void ifYouCouldOwnAnyMonopolyAllWithHotels(
+            String playersFile, TDInputGenerator inputGen, int roundCount) {
+        Game game = setUpBasicGame(playersFile, 1, 4, inputGen, roundCount);
+        //Give players money.
+        for (Player p : game.getPlayers()) {
+            p.optionalMoneyChange(Game.PLAYER_STARTING_MONEY);
+        }
+        //Ask the network which of the Monopolys it values highest.
+        List<Site> brownSites = new ArrayList();
+        List<Site> lightBlueSites = new ArrayList();
+        List<Site> pinkSites = new ArrayList();
+        List<Site> orangeSites = new ArrayList();
+        List<Site> redSites = new ArrayList();
+        List<Site> yellowSites = new ArrayList();
+        List<Site> greenSites = new ArrayList();
+        List<Site> blueSites = new ArrayList();
+        for (Site site : game.getBoard().getAllSites()) {
+            switch (site.getColorNumber()) {
+                case Board.BROWN :
+                    brownSites.add(site);
+                    break;
+                case Board.LIGHT_BLUE :
+                    lightBlueSites.add(site);
+                    break;
+                case Board.PINK :
+                    pinkSites.add(site);
+                    break;
+                case Board.ORANGE :
+                    orangeSites.add(site);
+                    break;
+                case Board.RED :
+                    redSites.add(site);
+                    break;
+                case Board.YELLOW : 
+                    yellowSites.add(site);
+                    break;
+                case Board.GREEN :
+                    greenSites.add(site);
+                    break;
+                case Board.BLUE :
+                    blueSites.add(site);
+                    break;
+            }
+        }
+        
+        TDPlayer player = (TDPlayer)game.getPlayers().get(0);
+        
+        int numHouses = Site.MAX_HOUSES;
+        
+        Map<String, Double> siteValues = new HashMap();
+        siteValues.put("Brown Sites", getValueOfOwningSitesWithHouses(brownSites, player,numHouses));
+        siteValues.put("Light Blue Sites", getValueOfOwningSitesWithHouses(lightBlueSites, player,numHouses));
+        siteValues.put("Pink Sites", getValueOfOwningSitesWithHouses(pinkSites, player,numHouses));
+        siteValues.put("Oranges Sites", getValueOfOwningSitesWithHouses(orangeSites, player,numHouses));
+        siteValues.put("Reds Sites", getValueOfOwningSitesWithHouses(redSites, player,numHouses));
+        siteValues.put("Yellows Sites", getValueOfOwningSitesWithHouses(yellowSites, player,numHouses));
+        siteValues.put("Greens Sites", getValueOfOwningSitesWithHouses(greenSites, player,numHouses));
+        siteValues.put("Blue Sites", getValueOfOwningSitesWithHouses(blueSites, player,numHouses));
+        
+        double bestValue = 0;
+        String winningSites = "None";
+        for (Map.Entry<String, Double> entry : siteValues.entrySet()) {
+            double value = entry.getValue();
+            if (value > bestValue) {
+                bestValue = value;
+                winningSites = entry.getKey();
+            }
+        }
+        System.out.println("If the player could own any Monopoly..");
+        System.out.println("The sites the player wants most are: " + winningSites);
+    }
+    
+    
+    /**
+     * Sees how much a player will accept in an offer for Bow St.
+     * @param playersFile players file to use.
+     * @param inputGen input gen for the player.
+     * @param roundCount rounds to start the game at.
+     */
+    public static void howMuchMoneyWillPlayerAcceptForBowSt(
+            String playersFile, TDInputGenerator inputGen, int roundCount) {
+        Game game = setUpGameTypeTwo(playersFile, 1, 4, inputGen, roundCount);
+        int playersStartingMoney = 3000;
+        //Give players money.
+        for (Player p : game.getPlayers()) {
+            p.optionalMoneyChange(playersStartingMoney);
+        }
+        Player playerOffering = game.getPlayers().get(p1Number);
+        Player playerReceiving = game.getPlayers().get(p2Number);
+        
+        Space bowSt = game.getBoard().get(SpaceEnums.BOW_ST_NUMBER);
+        int amountToPay = 0;
+        boolean dealAccepted = false;
+        boolean playerCannotAffordAnymore = false;
+        while(!dealAccepted) {
+            DealOffer offer = new DealOffer();
+            bowSt.setOwner(playerReceiving);
+            offer.addPropertyToRequest(bowSt);
+            offer.offerCash(amountToPay);
+            dealAccepted = playerReceiving.assessAnOffer(offer, playerOffering);
+            amountToPay = amountToPay + 50;
+            if (amountToPay > playersStartingMoney) {
+                dealAccepted = true;
+                playerCannotAffordAnymore = true;
+            }
+        }
+        
+        if (playerCannotAffordAnymore) {
+            System.out.println("Player will not accept any amount of money"
+                    + " up to " + playersStartingMoney + " for their "
+                    + "Bow St");
+        } else {
+            System.out.println("Amount of money player will accept for "
+                    + "Bow St: " + amountToPay);
+        }
+    }
+    
+    /**
+     * Prints the value of a deal offer.
+     * @param offer deal offer to print value for.
+     * @param playerValueFor player to value deal for.
+     * @param dealReceiver the receiver of the deal.
+     * @param dealOfferer the player offering the deal.
+     */
+    private static void printValueOfDeal(DealOffer offer, Player playerValueFor,
+            Player dealReceiver, Player dealOfferer) {
+        TDPlayer p = (TDPlayer) playerValueFor;
+        System.out.println("Values for P" + p.getNumber());
+        System.out.println("Value of doing nothing..");
+        System.out.println(
+                p.getMoveEvaluator().getCurrentResults(p.getNumber()));
+        System.out.println("Value of deal..");
+        System.out.println
+                (p.getMoveEvaluator().getValueOfOfferForThisPlayer
+                (offer, dealReceiver, dealOfferer));
+    }
+    
+    /**
+     * Prints whether a deal would be accepted by the player and whether this
+     * appears to be an incorrect or correct decision.
+     * @param offer to be assessed.
+     * @param receivingPlayer player receiving the offer.
+     * @param offeringPlayer player making the offer.
+     * @param expectedResult true if the player probably should accept the deal.
+     */
+    private static void printIfDealWouldBeAccepted(DealOffer offer,
+            Player receivingPlayer, Player offeringPlayer, boolean expectedResult) {
+        boolean dealAccepted
+                = receivingPlayer.assessAnOffer(offer, offeringPlayer);
+       
+        
+        if (dealAccepted == true) {
+            System.out.println("The deal was accepted by the player");
+        } else {
+            System.out.println("The deal was rejected by the player");
+        }
+        
+        if (dealAccepted == expectedResult) {
+            System.out.println("This seems like a correct decision");
+            correctDecisions++;
+        } else {
+            System.out.println("This seems like an incorrect decision");
+        }
+    }
+    
+    /**
+     * Prints the best deal a given player could make.
+     * @param p player to consider the best deal for.
+     */
+    private static void printPlayersBestDeal(Player p) {
+        if (p.getClass() != TDPlayer.class) {
+            System.err.println("Can only print players best deal for TD players");
+        }
+        TDPlayer player = (TDPlayer) p;
+        System.out.println("P" + p.getNumber() + "'s best deal");
+        Map.Entry<Double,Map.Entry<Player,DealOffer> > dealValuation 
+                = player.getMoveEvaluator().getOfferMostWorthMaking();
+        
+        if (dealValuation != null) {
+            Map.Entry<Player, DealOffer> playerAndOffer 
+                    = dealValuation.getValue();
+            System.out.println("Player wants to make deal to player " 
+                    + playerAndOffer.getKey().getNumber());
+            playerAndOffer.getValue().printDealOffer();
+        } else {
+            System.out.println("Player doesn't believe there is a deal worth making");
+        }
+        
+    }
+    
+    /**
+     * Sets up a basic game used in these Queries.
+     * @param playersFile to load player's network from.
+     * @param numOutputs number of outputs used.
+     * @param numPlayers number of players in the game.
+     * @param inputGen the input gen to be used by the player.
+     * @param roundCount the round count to start game at.
+     * @return 
+     */
+    public static Game setUpBasicGame(String playersFile, int numOutputs,
+            int numPlayers, TDInputGenerator inputGen, int roundCount) {
+        AbstractEvaluator playersEvaluator = new AbstractEvaluator(playersFile);
+        Generalizer playersGeneralizer = new Generalizer(playersEvaluator);
+        Critic playersCritic = new Critic(playersGeneralizer, numOutputs);
+        playersCritic.setBlockLearning(true);
+        boolean useExploratoryMoves = false;
+        
+        Game game = Game.newGame();
+        Board board = game.getBoard();
+        int maxTokenNumber = 0;
+        List<Player> players = new ArrayList();
+        
+        //Add TD players.
+        for (int i = 0; i < numPlayers; i++) {
+            players.add(new TDPlayer(maxTokenNumber, board, playersCritic,
+                    inputGen, useExploratoryMoves));
+            maxTokenNumber++;
+        }
+        
+        game.addPlayers(players);
+        game.setRoundCount(roundCount);
+        return game;
+    }
+    
+    /**
+     * Sets up the game for the first query.
+     * @param playersFile players file to load.
+     * @param numOutputs number of outputs to use.
+     * @param numPlayers number of players in the game.
+     * @param inputGen input gen to use.
+     * @param roundCount the round count to start game at.
+     * @return the set up game.
+     */
+    public static Game setUpGameTypeOne(String playersFile, int numOutputs,
+            int numPlayers, TDInputGenerator inputGen, int roundCount) {
+        
+        Game game = setUpBasicGame(playersFile, numOutputs, numPlayers, inputGen,
+                roundCount);
+        Board board = game.getBoard();
+        
+        Player pinkOwner = game.getPlayers().get(p1Number);
+        Player orangeOwner = game.getPlayers().get(p2Number);
+        Player otherNonMonopolyPlayer = game.getPlayers().get(p3Number);
+        Player currentPlayer = game.getPlayers().get(p4Number);
+        
+        for (Site site : board.getAllSites()) {
+            if (site.getColorNumber() == Board.PINK) {
+                site.setOwner(pinkOwner);
+            }
+            if (site.getColorNumber() == Board.ORANGE) {
+                site.setOwner(orangeOwner);
+            }
+            if (site.getColorNumber() == Board.BLUE) {
+                site.setOwner(otherNonMonopolyPlayer);
+            }
+            if (site.getColorNumber() == Board.GREEN) {
+                site.setOwner(currentPlayer);
+            }
+        }
+        
+        //Swap ownership of a blue and green property so neither of those
+        //players has a monopoly.
+        Space parkLane = board.get(SpaceEnums.PARK_LANE_NUMBER);
+        Space regentsSt = board.get(SpaceEnums.REGENT_ST_NUMBER);
+        
+        parkLane.setOwner(currentPlayer);
+        regentsSt.setOwner(otherNonMonopolyPlayer);
+        
+        //Set up players money.
+        pinkOwner.forcedMoneyChange(300, Bank.getInstance());
+        orangeOwner.forcedMoneyChange(300, Bank.getInstance());
+        otherNonMonopolyPlayer.forcedMoneyChange(500, Bank.getInstance());
+        currentPlayer.forcedMoneyChange(1500, Bank.getInstance());
+        
+        
+        return game;
+    }
+
+    /**
+     * Sets up the game for the second query.
+     * @param playersFile players file to load.
+     * @param numOutputs number of outputs to use.
+     * @param numPlayers number of players in the game.
+     * @param inputGen input gen to use.
+     * @param roundCount the round count to start game at.
+     * @return the set up game.
+     */    
+    public static Game setUpGameTypeTwo(String playersFile, int numOutputs,
+            int numPlayers, TDInputGenerator inputGen, int roundCount) {
+        Game game = setUpBasicGame(playersFile, numOutputs, numPlayers, inputGen,
+                roundCount);
+        Board board = game.getBoard();
+       
+        Player p1 = game.getPlayers().get(p1Number);
+        Player p2 = game.getPlayers().get(p2Number);
+        Player p3 = game.getPlayers().get(p3Number);
+        Player p4 = game.getPlayers().get(p4Number);
+        
+        //P1
+        board.get(SpaceEnums.ANGEL_NUMBER).setOwner(p1);
+        board.get(SpaceEnums.EUSTON_RD_NUMBER).setOwner(p1);
+        board.get(SpaceEnums.BOND_ST_NUMBER).setOwner(p1);
+        
+        //P2
+        board.get(SpaceEnums.BOW_ST_NUMBER).setOwner(p2);
+        board.get(SpaceEnums.PENTONVILLE_NUMBER).setOwner(p2);
+        
+        //P3
+        board.get(SpaceEnums.PICCADILLY_NUMBER).setOwner(p3);
+        
+        //P4
+        board.get(SpaceEnums.WHITEHALL_NUMBER).setOwner(p4);
+        
+        for (Player p : game.getPlayers()) {
+            p.optionalMoneyChange(1000);
+        }
+        
+        return game;
+    }
+    
+    /**
+     * Sets up the game for the third query.
+     * @param playersFile players file to load.
+     * @param numOutputs number of outputs to use.
+     * @param numPlayers number of players in the game.
+     * @param inputGen input gen to use.
+     * @param roundCount the round count to start game at.
+     * @return the set up game.
+     */    
+    public static Game setUpGameTypeThree(String playersFile, int numOutputs,
+            int numPlayers, TDInputGenerator inputGen, int roundCount) {
+        Game game = setUpBasicGame(playersFile, numOutputs, numPlayers, inputGen,
+                roundCount);
+        Board board = game.getBoard();
+       
+        int p1AndP2Money = 300;
+        int p3AndP4Money = 1500;
+        
+        Player p1 = game.getPlayers().get(p1Number);
+        Player p2 = game.getPlayers().get(p2Number);
+        Player p3 = game.getPlayers().get(p3Number);
+        Player p4 = game.getPlayers().get(p4Number);
+        
+        //P1
+        board.get(SpaceEnums.PALL_MALL_NUMBER).setOwner(p1);
+        board.get(SpaceEnums.WHITEHALL_NUMBER).setOwner(p1);
+        board.get(SpaceEnums.NORTHUMBERLANDAV_NUMBER).setOwner(p1);
+        p1.optionalMoneyChange(p1AndP2Money);
+        
+        //P2
+        board.get(SpaceEnums.BOW_ST_NUMBER).setOwner(p2);
+        board.get(SpaceEnums.MARLBOUROUGH_NUMBER).setOwner(p2);
+        board.get(SpaceEnums.VINE_ST_NUMBER).setOwner(p2);
+        p2.optionalMoneyChange(p1AndP2Money);
+        
+        //P3
+        board.get(SpaceEnums.TRAFALGAR_SQ_NUMBER).setOwner(p3);
+        board.get(SpaceEnums.FLEET_ST_NUMBER).setOwner(p3);
+        board.get(SpaceEnums.REGENT_ST_NUMBER).setOwner(p3);
+        p3.optionalMoneyChange(p3AndP4Money);
+        
+        //P4
+        board.get(SpaceEnums.STRAND_NUMBER).setOwner(p4);
+        board.get(SpaceEnums.BOND_ST_NUMBER).setOwner(p4);
+        board.get(SpaceEnums.OXFORD_ST_NUMBER).setOwner(p4);
+        p4.optionalMoneyChange(p3AndP4Money);
+        
+        return game;
+    }
+    
+
+    /**
+     * Gets the correct decisions.
+     * @return correct decisions.
+     */
+    public static int getCorrectDecisions() {
+        return correctDecisions;
+    }
+    
+    
+    
+    
+}

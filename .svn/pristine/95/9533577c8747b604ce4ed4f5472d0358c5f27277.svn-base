@@ -1,0 +1,275 @@
+package Display;
+
+import Model.Spaces.Site;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.Point;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
+import javax.swing.JPanel;
+import javax.swing.*;
+import java.util.ArrayList;
+import java.util.List;
+import Model.Players.Player;
+import Model.Spaces.Space;
+import java.awt.Font;
+/**
+ * A visual representation of the current game of Monopoly underway.
+ * @author Chris Berry
+ */
+public class BoardDisplay extends JFrame {
+    
+    private JPanel mainPanel = new JPanel();
+    private JLayeredPane[][] gridPanels;
+    private Map<Point,BoardSpaceTile> pointMap = new HashMap();
+   
+    private JPanel boardLayer = new JPanel();
+    private int boardWidth = 11;
+    private int southFinalSpace = 11;
+    private int eastFinalSpace = 21;
+    private int northFinalSpace = 31;
+    
+    private int windowWidth = 1000;
+    private int windowHeight = 700;
+    
+    private int boardDisplayWidth = 6 * windowWidth / 8;
+    private int boardDisplayHeight = 8 * windowHeight / 10;
+    private Dimension boardDimensions =
+            new Dimension(boardDisplayWidth, 8*boardDisplayHeight/10);
+    private Dimension dimensions =
+            new Dimension (windowWidth, windowHeight);
+    
+    private PlayersResourcePanel otherPlayersResourcePanel;
+    
+    private int tileWidth = 100;
+    private int tileHeight = 100;
+    
+    public static final Color BOARD_COLOR = new Color(204,255,204);
+    public static final Color SCREEN_COLOR = new Color(255, 254, 219);
+    
+    private Map<Integer, JLabel> playerIcons;
+    private Map<Integer, JPanel> playerStats;
+    
+    
+    private PlayerButtons playerButtons;
+    
+    public BoardDisplay(int numPlayers) {
+        this.setTitle("Monopoly");
+        setUpBoardLayouts();
+        playerIcons = new HashMap();
+        playerStats = new HashMap();
+        this.getContentPane().setLayout(new BoxLayout(this.getContentPane(),
+                BoxLayout.X_AXIS));
+        this.getContentPane().setBackground(SCREEN_COLOR);
+        JPanel leftPanel = new JPanel();
+        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        
+        leftPanel.add(mainPanel);
+        playerButtons = new PlayerButtons();
+        leftPanel.add(Box.createVerticalGlue());
+        leftPanel.add(playerButtons);
+        leftPanel.add(Box.createVerticalGlue());
+        
+        leftPanel.setOpaque(false);
+        rightPanel.setOpaque(false);
+        mainPanel.setOpaque(false);
+        
+        this.getContentPane().add(leftPanel);
+        otherPlayersResourcePanel = new PlayersResourcePanel(numPlayers);
+        rightPanel.add(otherPlayersResourcePanel);
+        this.getContentPane().add(rightPanel);
+        this.setPreferredSize(dimensions);
+        
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.pack();
+        this.setVisible(true);
+    }
+    
+    /**
+     * Sets up the layouts of the various panels used in the display.
+     */
+    private void setUpBoardLayouts() {
+        boardLayer.setLayout(new GridLayout(boardWidth,boardWidth));
+        
+        gridPanels = new JLayeredPane[boardWidth][boardWidth];    
+        for(int m = 0; m < boardWidth; m++) {
+           for(int n = 0; n < boardWidth; n++) {
+              gridPanels[m][n] = new JLayeredPane();
+              gridPanels[m][n].setPreferredSize(new Dimension(tileWidth,tileHeight));
+              gridPanels[m][n].setMaximumSize(new Dimension(tileWidth,tileHeight));
+              boardLayer.add(gridPanels[m][n]);
+           }
+        }
+        addLettersToBoard();
+        boardLayer.setBackground(BOARD_COLOR);
+        
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        boardLayer.setMaximumSize(boardDimensions);
+        mainPanel.add(boardLayer);
+    }
+    
+    private void addLettersToBoard() {
+        String[] monopolyLetters = {"M","O","N","O","P","O","L","Y"};
+        for (int i = 2; i < boardWidth - 1; i++) {
+            if (monopolyLetters.length > i - 2) {
+                Point p = new Point(i, i);
+                JLabel letter = new JLabel(monopolyLetters[i - 2]);
+                letter.setFont(new Font(letter.getFont().getName(), Font.PLAIN, 20));
+                letter.setBounds(0,0,25,25);
+                addToGrid(letter, p, JLayeredPane.DRAG_LAYER);
+            }
+        }
+    }
+    
+    
+    /**
+     * Adds a representation of the space to the display. 
+     * @param spaceToAdd
+     * @param labelName 
+     */
+    public void addSpaceToDisplay(int spaceToAdd, Space space) {
+//        int stringLength = 2;
+//        if (labelName.length() > stringLength) {
+//            String firstPart = labelName.substring(0, stringLength);
+//            String lastPart = labelName.substring(stringLength);
+//            labelName = firstPart + "\n" + lastPart;
+//        }
+//        JTextArea label = new JTextArea(labelName);
+        BoardSpaceTile label = new BoardSpaceTile(space);
+//        label.setLineWrap(true);
+        Point coord = spaceNumToBoardCoord(spaceToAdd);
+//        label.setBounds(0,0,tileWidth-15, tileHeight-15);
+        addToGrid(label, coord, JLayeredPane.DEFAULT_LAYER);
+        pointMap.put(coord, label);
+    }
+    
+    /**
+     * Adds a player's counter to the display.
+     */
+    public void addPlayerMarker(int playerToken, int spaceToAdd) {
+        JLabel player = new JLabel(playerToken + "");
+        Point coord = spaceNumToBoardCoord(spaceToAdd);
+        player.setForeground(Color.RED);
+        player.setBounds(0,0,tileWidth,tileHeight);
+        switch (playerToken) {
+            case 0 : player.setBorder(BorderFactory.createLineBorder(Color.RED));
+                break;
+            case 1: player.setBorder(BorderFactory.createLineBorder(Color.BLUE));
+                break;
+            case 2: player.setBorder(BorderFactory.createLineBorder(Color.GREEN));
+                break;
+            case 3: player.setBorder(BorderFactory.createLineBorder(Color.CYAN));
+                break;
+            default : player.setBorder(BorderFactory.createLineBorder(Color.ORANGE));
+        }
+        playerIcons.put(playerToken, player);
+        addToGrid(player, coord, JLayeredPane.PALETTE_LAYER);
+        
+        PlayerToken token = new PlayerToken(playerToken,playerToken);
+        Point point = this.spaceNumToBoardCoord(0);
+        BoardSpaceTile spaceTile = pointMap.get(point);
+        spaceTile.addPlayerToken(token);
+    }
+    
+    /**
+     * Moves the player to the new space on the GUI display.
+     * @param playerToken
+     * @param newSpace 
+     */
+    public void movePlayer(int playerToken, int newSpace) {
+        JLabel player = playerIcons.get(playerToken);
+        Container c = player.getParent();
+        c.remove(player);
+        c.repaint();
+        Point spaceNum = spaceNumToBoardCoord(newSpace);
+        addToGrid(player, spaceNum, JLayeredPane.PALETTE_LAYER);
+    }
+    
+    public void movePlayer(int playerNumber, int oldSpace, int newSpace) {
+        Point point = this.spaceNumToBoardCoord(oldSpace);
+        BoardSpaceTile oldTile = pointMap.get(point);
+        
+        PlayerToken playerToken = null;
+        for (PlayerToken token : oldTile.getTokens()) {
+            if (token.getPlayerNumber() == playerNumber) {
+                playerToken = token;
+            }
+        }
+        if (playerToken == null) {
+            System.err.println("Invalid player token at move player in Display class");
+            System.exit(0);
+        }
+        oldTile.removePlayerToken(playerToken);
+        Point newPoint = this.spaceNumToBoardCoord(newSpace);
+        BoardSpaceTile newTile = pointMap.get(newPoint);
+        newTile.addPlayerToken(playerToken);
+    }
+    
+    /**
+     * Adds a component to a given point on the grid.
+     * @param c
+     * @param coord A
+     */
+    private void addToGrid(Component c, Point coord, int layer) {
+        
+        gridPanels[coord.x][coord.y].add(c, layer);
+    }
+    
+    /**
+     * Converts a spaceNumber from the model to 
+     * the appropriate coord of the display grid.
+     * @param spaceNumber
+     * @return Point showing grid location.
+     */
+    private Point spaceNumToBoardCoord(int spaceNumber) {
+        Point coord = new Point(0,0);
+        if (spaceNumber < southFinalSpace) {
+            coord.setLocation(boardWidth - 1, boardWidth - spaceNumber - 1);
+        } else {
+            if (spaceNumber < eastFinalSpace) {
+                coord.setLocation(eastFinalSpace - spaceNumber - 1, 0);
+            } else {
+                if (spaceNumber < northFinalSpace) {
+                    coord.setLocation(0 , spaceNumber - eastFinalSpace + 1);
+                } else {
+                    coord.setLocation(spaceNumber - northFinalSpace + 1 ,
+                            boardWidth - 1);
+                }
+            }
+        }
+        return coord;
+    }
+
+    public void updatePlayerStats(List<Player> players, int currentPlayerNumber) {
+        otherPlayersResourcePanel.updatePlayerStats(players, currentPlayerNumber);
+        for (Player p : players) {
+            this.movePlayer(p.getNumber(), p.getCurrentSpace().getSpaceNumber());
+        }
+    }
+    
+    public void houseAddedToSite(Site site) {
+        Point gridPosition = spaceNumToBoardCoord(site.getSpaceNumber());
+        BoardSpaceTile spaceTile = pointMap.get(gridPosition);
+        spaceTile.setHouseNumberLabel(site.getHouses());
+    }
+    
+    public int getPlayerSelection() {
+        return playerButtons.getPlayerChoice();
+    }
+    
+    public void setPlayerSelection(int playerSelection) {
+        playerButtons.setPlayerChoice(playerSelection);
+    }
+    
+}

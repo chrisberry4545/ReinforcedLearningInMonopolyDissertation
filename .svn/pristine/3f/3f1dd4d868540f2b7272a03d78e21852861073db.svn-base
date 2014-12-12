@@ -1,0 +1,141 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players;
+
+import Display.BoardDisplay;
+import Model.Spaces.Site;
+import Model.Spaces.SiteGroup;
+import Model.Spaces.Space;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author chris
+ */
+public class HumanPlayer extends Player{
+    
+    public HumanPlayer(int setToken) {
+        super(setToken);
+    }
+    
+    /**
+     * Ask player yes/no question
+     * @param message to ask.
+     * @param title of message.
+     * @return true if the user accepts the proposal, otherwise false.
+     */
+    public boolean askPlayerQuestion(String message, String title) {
+        int response = JOptionPane.showConfirmDialog(BoardDisplay.getInstance(),
+                message, title, JOptionPane.YES_NO_OPTION);
+        if (response == JOptionPane.YES_OPTION) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Messages the player with some information.
+     * @param message to give player
+     * @param title of message
+     */
+    public void messagePlayer (String message, String title) {
+        JOptionPane.showMessageDialog(BoardDisplay.getInstance(),
+                message, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Asks player to choose how they will act when they are in jail.
+     * @return players choice.
+     */
+    public int askPlayerInJailOptions() {
+        Object[] options = {"Pay to leave jail", "Roll To leave",
+                    "Use get out of jail card", "Buy houses"};
+        int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "In Jail",
+                    "In Jail",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+        return n;        
+    }
+    
+    /**
+     * Gets the player's response to what they intend to do on their turn.
+     * @return players choice.
+     */
+    public int askPlayerMoveOptions() {
+        Object[] options = {"Roll", "Buy houses"};
+        int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose an option",
+                    "Player " + token +"'s Turn",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+        return n;
+    }
+        
+    /**
+     * Allows user to select from a list of Sites and returns the site 
+     * selected.
+     * @return the Site selected by the user.
+     */
+    public Site chooseProperty() {
+        ArrayList<String> siteNames = new ArrayList();
+        for (Site sites : getSites()) {
+            siteNames.add(sites.getName());
+        }
+        if (siteNames.size() > 0) {
+            Object[] options = siteNames.toArray();
+            int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose a property",
+                    "Choose a property",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            return getSites().get(n);
+        }
+        return null;
+    }
+    
+    /**
+     * Allows user to select from a list of possible to build on and
+     * returns the site selected.
+     * @return the Site selected by the user.
+     */
+    public Site choosePropertyForBuildingOn() {
+        ArrayList<String> siteNames = new ArrayList();
+        List<Site> sitesCanBeBuiltOn = getSitesWhichCanBeBuiltOn();
+        for (Site sites : sitesCanBeBuiltOn) {
+            siteNames.add(sites.getName());
+        }
+        if (siteNames.size() > 0) {
+            Object[] options = siteNames.toArray();
+            int n = JOptionPane.showOptionDialog(BoardDisplay.getInstance(),
+                    "Choose a property",
+                    "Choose a property",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            return sitesCanBeBuiltOn.get(n);
+        }
+        return null;
+    }
+    
+    public void mortgageProperties(List<Space> properties) {
+        //Nothing yet.
+    }
+     
+    
+}

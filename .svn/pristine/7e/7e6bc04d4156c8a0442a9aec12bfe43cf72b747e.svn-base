@@ -1,0 +1,61 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Display;
+
+import Model.Board;
+import javax.swing.*;
+import Model.Spaces.Space;
+import java.awt.GridLayout;
+import java.util.Map;
+import java.util.HashMap;
+import java.awt.Component;
+import java.util.Set;
+
+/**
+ *
+ * @author chris
+ */
+public class BoardSpaceTile extends JPanel {
+    
+    private JPanel tokenArea = new JPanel();
+    private JLabel houseLabel;
+    private Map<PlayerToken, Component> tokenMap = new HashMap();
+    
+    public BoardSpaceTile(Space space) {
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        
+        JLabel title = new JLabel(space.getName());
+        title.setOpaque(true);
+        title.setBackground(Board.getColor(space.getColorNumber()));
+        title.setForeground(Board.getMatchingTextColor(space.getColorNumber()));
+        this.add(title);
+        
+        houseLabel = new JLabel("Houses: ");
+        this.add(houseLabel);
+        
+        tokenArea.setLayout(new GridLayout(2,2));
+        this.add(tokenArea); 
+    }
+    
+    public void setHouseNumberLabel(int houseNumbers) {
+        houseLabel.setText("Houses: " + houseNumbers);
+    }
+    
+    public void addPlayerToken(PlayerToken token) {
+        JLabel tokenLabel = new JLabel(token.getImageIcon());
+        tokenArea.add(tokenLabel);
+        tokenMap.put(token, tokenLabel);
+    }
+    
+    public void removePlayerToken(PlayerToken token) {
+        Component component = tokenMap.get(token);
+        tokenArea.remove(component);
+    }
+    
+    public Set<PlayerToken> getTokens() {
+        return tokenMap.keySet();
+    }
+    
+}

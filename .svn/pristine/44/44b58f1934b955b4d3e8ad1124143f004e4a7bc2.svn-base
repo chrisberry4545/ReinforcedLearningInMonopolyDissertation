@@ -1,0 +1,157 @@
+package monopoly;
+
+import Controller.ActionManager;
+import Model.GameStats;
+import Model.Players.*;
+import Model.Players.NeuralNetwork.AbstractEvaluator;
+import Model.Players.NeuralNetwork.CriticPackage.Critic;
+import Model.Players.NeuralNetwork.Generalizer;
+import java.util.ArrayList;
+import java.util.List;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.FileReader;
+import java.io.FileNotFoundException;
+
+/**
+ * Main method for running the game of Monopoly with Reinforced Learning AIs.
+ * @author Chris Berry
+ */
+public class Main {
+
+    private static final int STARTING_RUNS = 10000;
+    
+    private static final String FILE_NAME_TO_SAVE_TO  = "June-25-2013-morenodes-lambda0-9-runs";
+
+    private static final String FILE_TO_LOAD = FILE_NAME_TO_SAVE_TO + STARTING_RUNS;
+    
+    private static final int OTHER_NET_RUNS = 5000;
+    
+    private static final String OTHER_NET_NAME = "June-25-2013-morenodes-lambda0-9-runs";
+    
+    private static final String SECOND_FILE_TO_LOAD = OTHER_NET_NAME + OTHER_NET_RUNS;
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        feedResultsToNetwork();
+        double lambda = 0;//0.9;
+        int totalNumberOfRuns = 1;
+        int runsBeforeSave = 1;
+        int amountOfSaves = totalNumberOfRuns/runsBeforeSave;
+        int numInputNodes  = ThirdTDPlayer.NUM_INPUT_NODES;
+        int numOutputNodes = ThirdTDPlayer.NUM_OUTPUT_NODES;
+        int numHiddenNodes = ThirdTDPlayer.NUM_HIDDEN_NODES;
+        
+        int numberOfNetworks = 0;
+        
+        int numHumanPlayers = 0;
+        int numRandomPlayers = 0;
+        int numFullTDPlayers = 0;
+        int numSimpleTDAIs = 0;
+        int numDBGenRandomAIs = 2;
+        boolean newNetwork = false;
+        boolean blockLearning = true;
+        boolean useExploratoryMoves;
+        //If learning is blocked then exploratory moves shouldn't be used.
+        if (blockLearning) {
+            useExploratoryMoves = false;
+        } else {
+            useExploratoryMoves = true;
+        }
+        
+        TDInputGenerator tdInputGen = new ThirdTDPlayer();
+        
+        
+        AbstractEvaluator evaluator;
+        if (newNetwork) {
+            //Create a new network.
+            evaluator = new AbstractEvaluator(lambda, numInputNodes, 
+                numHiddenNodes, numOutputNodes);
+            evaluator.restartNetwork();
+            //Save the network intially.
+            String fileName = FILE_NAME_TO_SAVE_TO + 0;
+            evaluator.saveNet(fileName);
+            System.out.println("Saving new network as: " + fileName);
+        } else {
+            System.out.println("Loading: " + FILE_TO_LOAD);
+            //Load a network.
+            evaluator = new AbstractEvaluator(FILE_TO_LOAD);
+        }
+        
+        AbstractEvaluator evaluator2;
+        Generalizer generalizer2;
+        Critic critic2 = null;
+        List<Critic> criticList = new ArrayList();
+        List<TDInputGenerator> inputGenList = new ArrayList();
+        if (numberOfNetworks == 2) {
+            if (!newNetwork) {
+                System.out.println("Loading Network 2: " + SECOND_FILE_TO_LOAD);
+                evaluator2 = new AbstractEvaluator(SECOND_FILE_TO_LOAD);
+                generalizer2 = new Generalizer(evaluator2);
+                critic2 = new Critic(generalizer2, numOutputNodes);
+                critic2.setBlockLearning(true);
+            }
+        }
+        
+        
+        
+        
+        GameStats.setUpGameStats(numHumanPlayers + numRandomPlayers + numFullTDPlayers
+                + numSimpleTDAIs + numDBGenRandomAIs);
+        Generalizer generalizer = new Generalizer(evaluator);
+        Critic critic = new Critic(generalizer, numOutputNodes);
+        critic.setBlockLearning(blockLearning);
+        ActionManager am = ActionManager.getInstance();
+        criticList.add(critic);
+        criticList.add(critic2);
+        inputGenList.add(tdInputGen);
+        inputGenList.add(tdInputGen);
+        for (int runs = 0; runs < amountOfSaves; runs++ ) {
+            for (int i = 0; i < runsBeforeSave; i++) {
+//                System.out.println("On run :" + i);   
+                if (numberOfNetworks < 2) {
+                    am.startNewGame(critic, tdInputGen, false,
+                            numHumanPlayers, numRandomPlayers,
+                        numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                        useExploratoryMoves);
+                } else {
+                    am.startNewGame(criticList,inputGenList, false,
+                            numHumanPlayers, numRandomPlayers,
+                        numFullTDPlayers, numSimpleTDAIs, numDBGenRandomAIs,
+                        useExploratoryMoves);
+                }
+                
+            }
+            GameStats.printStats();
+            //save after every hundred games.
+            System.out.println("Saving the file (Save number: " + runs + ").");
+            int totalRuns = (runs * runsBeforeSave) + runsBeforeSave + STARTING_RUNS;
+            String fileNameToSave = FILE_NAME_TO_SAVE_TO + totalRuns;
+            evaluator.saveNet(fileNameToSave);
+        }
+    }
+    
+    public static void feedResultsToNetwork() {
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader("MoveDB.csv"));
+        } catch (FileNotFoundException f) {
+            System.err.println(f);
+        }
+        
+        String line = null;
+        
+        try {
+            while ((line = reader.readLine()) != null) {
+                String[] inputs = line.split(",");
+                for (String input : inputs) {
+                    System.out.print(input);
+                }
+                System.out.println();
+            }
+        } catch (IOException e) {
+            System.err.println(e);
+        }
+    }
+}

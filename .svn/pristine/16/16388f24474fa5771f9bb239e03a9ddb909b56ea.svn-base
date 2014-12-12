@@ -1,0 +1,30 @@
+package Model.Cards;
+
+/**
+ *
+ * @author chris
+ */
+public class Card {
+    
+    private String name;
+    private CardAction action;
+    private boolean shuffleBack;
+    
+    public Card(String name, CardAction action, boolean shuffleBack) {
+        this.name = name;
+        this.action = action;
+        this.shuffleBack = shuffleBack;
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public CardAction getAction() {
+        return action;
+    }
+    
+    public boolean shuffleBack() {
+        return shuffleBack;
+    }
+}

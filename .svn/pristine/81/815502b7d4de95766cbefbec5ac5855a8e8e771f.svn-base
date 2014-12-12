@@ -1,0 +1,79 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Players.NeuralNetwork;
+
+import Controller.ActionManager;
+import Model.Game;
+import Model.Players.AbstractTDPlayer;
+import Model.Players.Player;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author chris
+ */
+public class Critic {
+    
+    private Generalizer generalizer;
+    private int numOutputNodes;
+    private int moneyOutputOffset;
+    
+    public Critic(Generalizer generalizer, int numberOfOutputNodes,
+            int offsetForMoneyOutput) {
+        this.generalizer = generalizer;
+        this.numOutputNodes = numberOfOutputNodes;
+        this.moneyOutputOffset = offsetForMoneyOutput;
+        
+    }
+    
+    public Generalizer getGeneralizer() {
+        return generalizer;
+    }
+    
+    /**
+     * Feeds the previous states inputs and the actual results through to the 
+     * generaliser. If this was the last move of the game, this is noted and
+     * the appropriate values are used instead.
+     * @param previousStatesInput
+     * @param results 
+     */
+    public void generalize(double[] previousStatesInput, double[] results) {
+        //If game isn't finished generalize as normal.
+        if (!Game.getInstance().isFinished()) {
+            generalizer.generalize(previousStatesInput, results);
+        } else { //Otherwise use final game output as the results.
+            int winnerToken = -1;
+            //Should only be one player left.
+            if (Game.getInstance().getPlayers().size() == 1) {
+                for (Player winner : Game.getInstance().getPlayers()) {
+                    winnerToken = winner.getToken();
+                }
+                //Winning player gets a value of 1, the rest get a value of 0.
+                if (winnerToken != -1) {
+                    double[] actualResultsList =
+                            new double[numOutputNodes];
+                    for (int j = 0; j < numOutputNodes -
+                            moneyOutputOffset; j++) {
+                        if (j != winnerToken) {
+                            actualResultsList[j] = 0;
+                        } else {
+                            actualResultsList[j] = 1;
+                        }
+                    }
+                    System.out.println("Player " + winnerToken + " wins the game");
+                    generalizer.generalize(previousStatesInput, actualResultsList);
+                } else {
+                    System.err.println("No winner is avaliable");
+                }
+            } else {
+                System.err.println("The game is over but supposedly there"
+                        + " are no players left.");
+            }
+        }
+    }
+    
+    
+}

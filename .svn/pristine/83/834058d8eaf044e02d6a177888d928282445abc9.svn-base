@@ -1,0 +1,229 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Controller;
+
+import Model.Spaces.Site;
+import Model.Spaces.Space;
+import Model.Players.*;
+import Display.BoardDisplay;
+import Model.*;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+
+/**
+ *
+ * @author chris
+ */
+public class ActionManager {
+    
+    private static ActionManager instance = null;
+    private BoardDisplay display = BoardDisplay.getInstance();
+    private Board board = Board.getInstance();
+    private Game game;
+    
+    protected ActionManager() {
+        addPropertiesToBoardDisplay();
+        ArrayList<Player> players = new ArrayList();
+        players.add(new HumanPlayer(0));
+        players.add(new RandomAI(1));
+        players.add(new RandomAI(2));
+        game = Game.getInstance(players);
+        addPlayers();
+    }
+ 
+    /**
+    * Returns an instance of the singleton class ActionManager
+    * @return ActionManager instance
+    */
+    public static ActionManager getInstance() {
+        if (instance == null) {
+            instance = new ActionManager();
+        }
+        return instance;
+    }
+    
+    private void addPropertiesToBoardDisplay() {
+        int counter = 0;
+        for (Space space : board) {
+            display.addSpaceToDisplay(counter,space.getName());
+            counter++;
+        }
+        display.revalidate();
+    }
+    
+    private void addPlayers() {
+        for (Player player : game.getPlayers()) {
+            display.addPlayerMarker(player.getToken(), 0);
+            //Puts the player at go.
+            player.setSpace(board.get(0));       
+        }
+        game.givePlayersStartingMoney();
+        display.revalidate();
+    }
+    
+    public void startGame() {
+        while (!game.isFinished()) {
+            Player player = game.nextPlayer();
+            if (player.inJail()) {
+                player.increaseJailCounter();
+            }
+            takeTurn(player);
+        }
+    }
+    
+    private void takeTurn(Player player) {
+        if (!player.inJail()) {
+                standardTurn(player);
+        } else {
+                inJailTurn(player);
+        }
+    }
+    
+    private void standardTurn(Player player) {
+        int n = player.askPlayerMoveOptions();
+        switch(n) {
+            case Player.ROLL_DICE : 
+                rollDiceToMove(player);
+                break;
+            case Player.BUY_HOUSES :
+                showHouseBuyingOptions(player);  
+                //Brings up options again after player makes a choice.
+                standardTurn(player);
+                break;
+            case Player.OFFER_PROPERTY :
+                player.offerAPropertyToAnotherPlayer();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.MORTGAGE_PROPERTIES :
+                player.mortgageProperties();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.SELL_HOUSES :
+                player.sellHouses();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.BUY_BACK_MORTGAGED_PROPERTIES :
+                player.buyBackMortgagedProperty();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            case Player.SHOW_PROPERTIES :
+                player.showPlayerProperties();
+                //Player can still continue their turn.
+                standardTurn(player);
+                break;
+            
+        }
+    }
+    
+    private void inJailTurn(Player player) {
+        int n = player.askPlayerInJailOptions();
+        switch (n) {
+            //Pay to leave
+            case Player.PAY_TO_LEAVE : 
+                if (player.payToLeaveJail()) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                } else {
+                    player.messagePlayer("You don't have enough money "
+                            + "to leave jail.", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Roll to leave.
+            case Player.ROLL_TO_LEAVE : 
+                if (player.rollToLeaveJail()) {
+                    player.messagePlayer("You succesfully leave jail.",
+                            "Out of jail");
+                    takeTurn(player);
+                } else {
+                    player.messagePlayer("You didn't roll a double.",
+                            "Still in jail");
+                    //Turn finishes in this case.
+                }
+                break;
+            //Use get out of jail card.
+            case Player.GET_OUT_OF_JAIL_CARD : 
+                if (player.useGetOutOfJailCard()) {
+                    player.messagePlayer("Used get out of jail card",
+                            "Out of Jail");
+                } else {
+                    player.messagePlayer("You don't have a get out of jail"
+                            + " card", "Still in jail");
+                }
+                takeTurn(player);
+                break;
+            //Buy houses.
+            case Player.JAIL_BUY_HOUSES : 
+                showHouseBuyingOptions(player);
+                takeTurn(player);
+                break;
+        }
+    }
+    
+    /**
+     * Performs the appropriate actions for a players turn.
+     */
+    private void rollDiceToMove(Player player) {
+        int diceRoll = player.rollForTurn();
+        int newSpace = game.movePlayer(player, diceRoll);
+        display.movePlayer(player.getToken(), newSpace);
+        display.updateStatPanel(player.getToken(), player.getMoney());
+        handleProperty(player, diceRoll); 
+    }
+    
+    
+    private void handleProperty(Player player, int diceRoll) {
+        Space landedOn = player.getCurrentSpace();  
+        landedOn.performAction(diceRoll, player);
+        display.movePlayer(player.getToken(), player.getCurrentSpace().getSpaceNumber());
+        display.updateStatPanel(player.getToken(), player.getMoney());    
+    }
+    
+   
+    
+    /**
+     * Shows the house buying options for the current player.
+     */
+    private void showHouseBuyingOptions(Player player) {
+        Site site = player.choosePropertyForBuildingOn();
+        //Returns the site number selected.
+        if (site != null) {
+            String title = "";
+            String message = "";
+            switch (site.addHouse()) {
+                case Site.HOUSE_ADDED :
+                    message = "Added house to " + site.getName() +
+                    ". This now has " + site.getHouses();
+                    title = "Added house";
+                    break;
+                case Player.NOT_ENOUGH_MONEY :
+                    message = "You don't have enough money for another house";
+                    title = "Not enough money";
+                    break;
+//                case Site.TOO_MANY_HOUSES : 
+//                    message = "You've already got a hotel"
+//                        + " on this property";
+//                    title = "Already have a hotel";
+//                    break;
+//                case Site.MUST_BUY_HOUSES_ON_OTHER_PROPERTIES :
+//                    message = "You must buy houses on other properties first";
+//                    title = "Buy houses elsewhere first.";
+//                    break;
+            }
+            player.messagePlayer(message, title);
+            
+        } else { // Happens if there are no properties avaliable and
+                 // -1 is returned from sitenumber.
+            player.messagePlayer("Not enough properties",
+                                        "Not enough properties");
+        }    
+    }
+    
+    
+}

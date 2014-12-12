@@ -1,0 +1,30 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Model.Spaces;
+
+import Model.Players.Player;
+import Model.Cards.GoToJail;
+import Model.Cards.CardAction;
+
+/**
+ *
+ * @author chris
+ */
+public class GoToJailSpace extends Space{
+    
+    CardAction goToJail;
+    
+    public GoToJailSpace(String name) {
+        super(name, -1,-1);
+        this.goToJail = new GoToJail();
+    }
+    
+    @Override
+    public int performAction(int diceRoll, Player p) {
+        goToJail.performAction(p);
+        return 0;
+    }
+    
+}
